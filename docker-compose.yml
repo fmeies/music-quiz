@@ -1,0 +1,13 @@
+services:
+  server:
+    build: ./server
+    env_file: ./server/.env
+    ports:
+      - "3011:3011"
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    ports:
+      - "3010:3010"
+    restart: unless-stopped
