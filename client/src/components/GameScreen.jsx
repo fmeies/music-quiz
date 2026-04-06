@@ -1,15 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import NowPlaying from './NowPlaying';
 import Timeline from './Timeline';
 
 export default function GameScreen() {
   const { gameState, playerId, isHost, isActivePlayer, challenge, reveal, nextTurn } = useGame();
+  const [countdown, setCountdown] = useState(null);
+
+  const phase = gameState?.phase;
+
+  useEffect(() => {
+    if (phase !== 'placed') { setCountdown(null); return; }
+    const seconds = gameState?.revealTimeoutSeconds ?? 10;
+    setCountdown(seconds);
+    const interval = setInterval(() => {
+      setCountdown(c => (c <= 1 ? (clearInterval(interval), 0) : c - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [phase, gameState?.currentPlayerId, gameState?.round]);
 
   if (!gameState) return null;
 
   const players = Object.entries(gameState.players);
-  const phase = gameState.phase;
   const activePlayer = gameState.players[gameState.currentPlayerId];
 
   const canChallenge =
@@ -31,24 +43,27 @@ export default function GameScreen() {
 
       <NowPlaying />
 
-      {/* Challenge button for non-active players */}
-      {canChallenge && (
+      {/* Countdown + challenge area */}
+      {phase === 'placed' && (
         <div className="challenge-area">
-          <button className="btn-challenge" onClick={challenge}>
-            ✋ Challenge!
-          </button>
-        </div>
-      )}
-      {phase === 'placed' && !isActivePlayer && gameState.players[playerId]?.challenged && (
-        <div className="challenge-area">
-          <span className="challenged-badge">✅ You challenged</span>
+          {countdown > 0 && (
+            <span className="countdown">{countdown}</span>
+          )}
+          {canChallenge && countdown > 0 && (
+            <button className="btn-challenge" onClick={challenge}>
+              ✋ Challenge!
+            </button>
+          )}
+          {!isActivePlayer && gameState.players[playerId]?.challenged && (
+            <span className="challenged-badge">✅ You challenged</span>
+          )}
         </div>
       )}
 
-      {/* Host controls */}
+      {/* Host manual reveal override */}
       {isHost && phase === 'placed' && (
         <div className="host-controls-game">
-          <button className="btn-reveal" onClick={reveal}>🔍 Reveal</button>
+          <button className="btn-reveal" onClick={reveal}>🔍 Reveal now</button>
         </div>
       )}
       {isHost && phase === 'reveal' && (

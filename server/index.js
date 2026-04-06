@@ -17,6 +17,7 @@ app.use(express.json());
 // ─── In-Memory Game State ────────────────────────────────────────────────────
 
 const rooms = {}; // roomId → gameState
+const revealTimers = {}; // roomId → timeout
 
 function createRoom(hostId, hostName) {
   return {
@@ -37,7 +38,8 @@ function createRoom(hostId, hostName) {
 }
 
 function roomPublicState(room) {
-  const hideYear = room.phase === 'playing' || room.phase === 'placed';
+  const hideCurrentYear = room.phase === 'playing' || room.phase === 'placed';
+  const currentTrackId = room.currentCard?.trackId;
   return {
     phase: room.phase,
     round: room.round,
@@ -50,14 +52,15 @@ function roomPublicState(room) {
           name: p.name,
           score: p.score,
           challenged: p.challenged,
-          timeline: hideYear
-            ? p.timeline.map(c => ({ ...c, year: null }))
+          // Only hide the year of the current round's card; starter cards stay visible
+          timeline: hideCurrentYear
+            ? p.timeline.map(c => c.trackId === currentTrackId ? { ...c, year: null } : c)
             : p.timeline,
           timelineCount: p.timeline.length,
         }
       ])
     ),
-    currentCard: hideYear
+    currentCard: hideCurrentYear
       ? {
           trackId: room.currentCard?.trackId,
           title: room.currentCard?.title,
@@ -66,6 +69,7 @@ function roomPublicState(room) {
         }
       : room.currentCard,
     playlist: room.playlist,
+    revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
   };
 }
 
@@ -105,6 +109,38 @@ function pickRandomTrack(room) {
   const available = room.playlist.tracks.filter(t => !room.usedTracks.includes(t.trackId));
   if (!available.length) return null;
   return available[Math.floor(Math.random() * available.length)];
+}
+
+function triggerReveal(roomId) {
+  const room = rooms[roomId];
+  if (!room || room.phase !== 'placed') return;
+  delete revealTimers[roomId];
+
+  room.phase = 'reveal';
+
+  const year = room.currentCard.year;
+  const activePlayer = room.players[room.currentPlayerId];
+  if (!activePlayer) { room.phase = 'reveal'; io.to(roomId).emit('gameState', roomPublicState(room)); return; }
+  const cardIdx = activePlayer.timeline.findIndex(c => c.trackId === room.currentCard.trackId);
+  const prev = activePlayer.timeline[cardIdx - 1];
+  const next = activePlayer.timeline[cardIdx + 1];
+  const correct = (!prev || prev.year <= year) && (!next || next.year >= year);
+
+  if (correct) {
+    activePlayer.score += 1;
+  } else {
+    activePlayer.timeline.splice(cardIdx, 1);
+    Object.values(room.players).forEach(p => {
+      if (p.challenged) {
+        p.score += 1;
+        const insertIdx = p.timeline.findIndex(c => c.year > year);
+        p.timeline.splice(insertIdx === -1 ? p.timeline.length : insertIdx, 0, { ...room.currentCard });
+      }
+    });
+  }
+
+  io.to(roomId).emit('gameState', roomPublicState(room));
+  io.to(roomId).emit('notification', `"${room.currentCard.title}" is from ${year}. ${correct ? `${activePlayer.name} was right! ✅` : `${activePlayer.name} was wrong! ❌`}`);
 }
 
 function startTurn(room, trackOverride) {
@@ -218,6 +254,15 @@ io.on('connection', (socket) => {
     room.currentPlayerId = room.playerOrder[0];
     room.round = 1;
 
+    // Deal one starter card (with visible year) to each player
+    for (const playerId of room.playerOrder) {
+      const starter = pickRandomTrack(room);
+      if (starter) {
+        room.players[playerId].timeline.push(starter);
+        room.usedTracks.push(starter.trackId);
+      }
+    }
+
     if (!startTurn(room)) return socket.emit('error', 'No tracks available');
 
     io.to(roomId).emit('gameState', roomPublicState(room));
@@ -235,8 +280,12 @@ io.on('connection', (socket) => {
 
     room.phase = 'placed';
 
+    const timeout = parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10') * 1000;
+    revealTimers[roomId] = setTimeout(() => triggerReveal(roomId), timeout);
+
     io.to(roomId).emit('gameState', roomPublicState(room));
-    io.to(roomId).emit('notification', `${player.name} placed the card — others can now challenge!`);
+    const timeoutSec = parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10');
+    io.to(roomId).emit('notification', `${player.name} placed the card — challenge within ${timeoutSec} seconds!`);
   });
 
   // Other players challenge the active player's placement
@@ -247,45 +296,34 @@ io.on('connection', (socket) => {
 
     room.players[socket.id].challenged = true;
     io.to(roomId).emit('gameState', roomPublicState(room));
+
+    // Cancel auto-reveal timer and reveal immediately
+    if (revealTimers[roomId]) {
+      clearTimeout(revealTimers[roomId]);
+      delete revealTimers[roomId];
+    }
+    triggerReveal(roomId);
   });
 
-  // Host reveals the year and scores
+  // Host can manually trigger reveal (override for the auto-timer)
   socket.on('reveal', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.id || room.phase !== 'placed') return;
-
-    room.phase = 'reveal';
-
-    const year = room.currentCard.year;
-    const activePlayer = room.players[room.currentPlayerId];
-    const cardIdx = activePlayer.timeline.findIndex(c => c.trackId === room.currentCard.trackId);
-    const prev = activePlayer.timeline[cardIdx - 1];
-    const next = activePlayer.timeline[cardIdx + 1];
-    const correct = (!prev || prev.year <= year) && (!next || next.year >= year);
-
-    if (correct) {
-      activePlayer.score += 1;
-    } else {
-      // Remove wrong card from active player's timeline
-      activePlayer.timeline.splice(cardIdx, 1);
-      // Challengers get the card inserted at the correct year position in their timeline
-      Object.entries(room.players).forEach(([id, p]) => {
-        if (p.challenged) {
-          p.score += 1;
-          const insertIdx = p.timeline.findIndex(c => c.year > year);
-          p.timeline.splice(insertIdx === -1 ? p.timeline.length : insertIdx, 0, { ...room.currentCard });
-        }
-      });
+    if (revealTimers[roomId]) {
+      clearTimeout(revealTimers[roomId]);
+      delete revealTimers[roomId];
     }
-
-    io.to(roomId).emit('gameState', roomPublicState(room));
-    io.to(roomId).emit('notification', `"${room.currentCard.title}" is from ${year}. ${correct ? `${activePlayer.name} was right! ✅` : `${activePlayer.name} was wrong! ❌`}`);
+    triggerReveal(roomId);
   });
 
   // Host advances to the next player's turn
   socket.on('nextTurn', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.id || room.phase !== 'reveal') return;
+    if (revealTimers[roomId]) {
+      clearTimeout(revealTimers[roomId]);
+      delete revealTimers[roomId];
+    }
 
     // Advance to next player (skip disconnected)
     let attempts = 0;

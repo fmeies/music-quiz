@@ -302,8 +302,15 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 15px; }
 
 /* ── Challenge / Intervention ────────────────────────────── */
 .challenge-area {
-  display: flex; justify-content: center;
-  margin: 12px 0;
+  display: flex; justify-content: center; align-items: center;
+  gap: 16px; margin: 12px 0;
+}
+
+.countdown {
+  font-size: 48px; font-weight: 900;
+  color: var(--accent);
+  min-width: 56px; text-align: center;
+  animation: pulse 1s infinite;
 }
 .btn-challenge {
   background: #e05; color: #fff;
