@@ -18,6 +18,7 @@ app.use(express.json());
 
 const rooms = {}; // roomId → gameState
 const revealTimers = {}; // roomId → timeout
+const nextTurnTimers = {}; // roomId → timeout
 
 function createRoom(hostId, hostName) {
   return {
@@ -70,6 +71,7 @@ function roomPublicState(room) {
       : room.currentCard,
     playlist: room.playlist,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
+    nextTurnTimeoutSeconds: parseInt(process.env.NEXT_TURN_TIMEOUT_SECONDS || '5'),
   };
 }
 
@@ -111,6 +113,31 @@ function pickRandomTrack(room) {
   return available[Math.floor(Math.random() * available.length)];
 }
 
+function triggerNextTurn(roomId) {
+  const room = rooms[roomId];
+  if (!room || room.phase !== 'reveal') return;
+  if (nextTurnTimers[roomId]) { clearTimeout(nextTurnTimers[roomId]); delete nextTurnTimers[roomId]; }
+
+  let attempts = 0;
+  do {
+    room.currentTurnIndex = (room.currentTurnIndex + 1) % room.playerOrder.length;
+    attempts++;
+  } while (!room.players[room.playerOrder[room.currentTurnIndex]] && attempts < room.playerOrder.length);
+
+  room.currentPlayerId = room.playerOrder[room.currentTurnIndex];
+  room.round += 1;
+
+  if (!startTurn(room)) {
+    room.phase = 'gameover';
+    io.to(roomId).emit('gameState', roomPublicState(room));
+    io.to(roomId).emit('notification', 'All songs played! Game over.');
+    return;
+  }
+
+  io.to(roomId).emit('gameState', roomPublicState(room));
+  io.to(roomId).emit('notification', `${room.players[room.currentPlayerId].name}'s turn!`);
+}
+
 function triggerReveal(roomId) {
   const room = rooms[roomId];
   if (!room || room.phase !== 'placed') return;
@@ -120,7 +147,7 @@ function triggerReveal(roomId) {
 
   const year = room.currentCard.year;
   const activePlayer = room.players[room.currentPlayerId];
-  if (!activePlayer) { room.phase = 'reveal'; io.to(roomId).emit('gameState', roomPublicState(room)); return; }
+  if (!activePlayer) { io.to(roomId).emit('gameState', roomPublicState(room)); return; }
   const cardIdx = activePlayer.timeline.findIndex(c => c.trackId === room.currentCard.trackId);
   const prev = activePlayer.timeline[cardIdx - 1];
   const next = activePlayer.timeline[cardIdx + 1];
@@ -141,6 +168,9 @@ function triggerReveal(roomId) {
 
   io.to(roomId).emit('gameState', roomPublicState(room));
   io.to(roomId).emit('notification', `"${room.currentCard.title}" is from ${year}. ${correct ? `${activePlayer.name} was right! ✅` : `${activePlayer.name} was wrong! ❌`}`);
+
+  const nextTurnDelay = parseInt(process.env.NEXT_TURN_TIMEOUT_SECONDS || '5') * 1000;
+  nextTurnTimers[roomId] = setTimeout(() => triggerNextTurn(roomId), nextTurnDelay);
 }
 
 function startTurn(room, trackOverride) {
@@ -316,34 +346,11 @@ io.on('connection', (socket) => {
     triggerReveal(roomId);
   });
 
-  // Host advances to the next player's turn
+  // Host can skip the reveal countdown early
   socket.on('nextTurn', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.id || room.phase !== 'reveal') return;
-    if (revealTimers[roomId]) {
-      clearTimeout(revealTimers[roomId]);
-      delete revealTimers[roomId];
-    }
-
-    // Advance to next player (skip disconnected)
-    let attempts = 0;
-    do {
-      room.currentTurnIndex = (room.currentTurnIndex + 1) % room.playerOrder.length;
-      attempts++;
-    } while (!room.players[room.playerOrder[room.currentTurnIndex]] && attempts < room.playerOrder.length);
-
-    room.currentPlayerId = room.playerOrder[room.currentTurnIndex];
-    room.round += 1;
-
-    if (!startTurn(room)) {
-      room.phase = 'gameover';
-      io.to(roomId).emit('gameState', roomPublicState(room));
-      io.to(roomId).emit('notification', 'All songs played! Game over.');
-      return;
-    }
-
-    io.to(roomId).emit('gameState', roomPublicState(room));
-    io.to(roomId).emit('notification', `${room.players[room.currentPlayerId].name}'s turn!`);
+    triggerNextTurn(roomId);
   });
 
   socket.on('disconnect', () => {

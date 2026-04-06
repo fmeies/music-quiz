@@ -10,13 +10,23 @@ export default function GameScreen() {
   const phase = gameState?.phase;
 
   useEffect(() => {
-    if (phase !== 'placed') { setCountdown(null); return; }
-    const seconds = gameState?.revealTimeoutSeconds ?? 10;
-    setCountdown(seconds);
-    const interval = setInterval(() => {
-      setCountdown(c => (c <= 1 ? (clearInterval(interval), 0) : c - 1));
-    }, 1000);
-    return () => clearInterval(interval);
+    if (phase === 'placed') {
+      const seconds = gameState?.revealTimeoutSeconds ?? 10;
+      setCountdown(seconds);
+      const interval = setInterval(() => {
+        setCountdown(c => (c <= 1 ? (clearInterval(interval), 0) : c - 1));
+      }, 1000);
+      return () => clearInterval(interval);
+    } else if (phase === 'reveal') {
+      const seconds = gameState?.nextTurnTimeoutSeconds ?? 5;
+      setCountdown(seconds);
+      const interval = setInterval(() => {
+        setCountdown(c => (c <= 1 ? (clearInterval(interval), 0) : c - 1));
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setCountdown(null);
+    }
   }, [phase, gameState?.currentPlayerId, gameState?.round]);
 
   if (!gameState) return null;
@@ -68,7 +78,7 @@ export default function GameScreen() {
       )}
       {isHost && phase === 'reveal' && (
         <div className="host-controls-game">
-          <button className="btn-next" onClick={nextTurn}>Next player →</button>
+          <button className="btn-next" onClick={nextTurn}>Skip ({countdown}s) →</button>
         </div>
       )}
 

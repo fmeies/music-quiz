@@ -111,16 +111,16 @@ export default function NowPlaying() {
         )}
 
         <div className="song-info">
-          {phase === 'playing' ? (
-            <>
-              <span className="mystery-label">🎵 Which song is this?</span>
-              <span className="mystery-sub">Place it in your timeline!</span>
-            </>
-          ) : (
+          {phase === 'reveal' || phase === 'gameover' ? (
             <>
               <span className="song-title">{card.title}</span>
               <span className="song-artist">{card.artist}</span>
               <span className="song-year reveal-year">{card.year}</span>
+            </>
+          ) : (
+            <>
+              <span className="mystery-label">🎵 Which song is this?</span>
+              <span className="mystery-sub">Place it in your timeline!</span>
             </>
           )}
         </div>
