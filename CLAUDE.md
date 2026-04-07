@@ -19,7 +19,7 @@ Music quiz party game inspired by Hitster. Players listen to Spotify tracks and 
 ```bash
 npm run install:all   # install deps in both server/ and client/
 npm run dev:server    # backend with nodemon on :3011
-npm run dev:client    # frontend with react-scripts on :3010 (PORT=3010 baked into start script)
+npm run dev:client    # frontend with Vite on :3010
 ```
 
 In dev, Vite's built-in proxy (configured in `vite.config.js`) forwards `/verify`, `/auth`, and `/socket.io` (including WebSocket) to `http://localhost:3011`. No env file needed.
@@ -71,7 +71,7 @@ Phases cycle through: `lobby` → `playing` → `placed` → `reveal` → back t
 
 - **Spotify Premium required** for Web Playback SDK (full track playback)
 - **HTTPS required** in production (Spotify SDK constraint)
-- The `client/package.json` `homepage` is set to `/music-quiz` — all asset paths are relative to that base
+- `base: '/music-quiz'` in `client/vite.config.js` sets the asset base path — `import.meta.env.BASE_URL` is `/music-quiz/` in prod and `/` in dev
 - Playlist loading uses server-side Spotify Client Credentials (no user login needed); only audio playback requires the user OAuth token
 - Next turn is manual — the host must press "Next →" after each reveal; there is no auto-advance timer
 - No test suite exists
