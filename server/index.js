@@ -210,10 +210,6 @@ app.get('/verify', (req, res) => {
   res.json({ ok: code === process.env.APP_CODE });
 });
 
-app.get('/auth/spotify/status', (req, res) => {
-  const { roomId } = req.query;
-  res.json({ hasToken: !!(rooms[roomId]?.spotifyToken) });
-});
 
 // ─── Socket.io ───────────────────────────────────────────────────────────────
 
@@ -332,7 +328,6 @@ io.on('connection', (socket) => {
     const { roomId, playerId } = socket.data;
     if (roomId && rooms[roomId]) {
       const room = rooms[roomId];
-      const name = room.players[playerId]?.name || 'Someone';
       delete room.players[playerId];
       if (Object.keys(room.players).length === 0) {
         delete rooms[roomId];

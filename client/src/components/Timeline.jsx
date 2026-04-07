@@ -59,7 +59,7 @@ export default function Timeline({ playerId }) {
     <div className={`timeline-wrapper ${isMe ? 'mine' : ''} ${isActiveTimeline ? 'active-player' : ''}`}>
       <div className="timeline-player-name">
         {player.name}
-        {isMe && ' (Du)'}
+        {isMe && ' (You)'}
         {isActiveTimeline && <span className="turn-badge">🎵 active</span>}
         <span className="score-badge">⭐ {player.score}</span>
         {player.challenged && phase === 'placed' && <span className="challenged-badge">✋</span>}

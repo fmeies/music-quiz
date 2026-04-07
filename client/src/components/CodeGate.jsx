@@ -11,11 +11,15 @@ export default function CodeGate({ onVerified }) {
     e.preventDefault();
     setLoading(true);
     setError(false);
-    const res = await fetch(`${BASE}/verify?code=${encodeURIComponent(code)}`);
-    const { ok } = await res.json();
-    if (ok) {
-      onVerified();
-    } else {
+    try {
+      const res = await fetch(`${BASE}/verify?code=${encodeURIComponent(code)}`);
+      const { ok } = await res.json();
+      if (ok) {
+        onVerified();
+      } else {
+        setError(true);
+      }
+    } catch {
       setError(true);
     }
     setLoading(false);
