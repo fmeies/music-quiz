@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useGame } from '../context/GameContext';
 
 export default function NowPlaying() {
-  const { gameState, isHost, isActivePlayer, spotifyToken } = useGame();
+  const { gameState, isHost, spotifyToken } = useGame();
   const [playing, setPlaying] = useState(false);
   const [deviceId, setDeviceId] = useState(null);
   const [sdkError, setSdkError] = useState(null);
@@ -106,9 +106,16 @@ export default function NowPlaying() {
   return (
     <div className="now-playing">
       <div className="now-playing-inner">
-        {card.albumArt && phase === 'reveal' && (
-          <img src={card.albumArt} alt="Album Art" className="album-art" />
-        )}
+        <div className="album-art-slot">
+          {card.albumArt && (
+            <img
+              src={card.albumArt}
+              alt="Album Art"
+              className="album-art"
+              style={{ visibility: (phase === 'reveal' || phase === 'gameover') ? 'visible' : 'hidden' }}
+            />
+          )}
+        </div>
 
         <div className="song-info">
           {phase === 'reveal' || phase === 'gameover' ? (

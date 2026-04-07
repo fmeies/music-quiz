@@ -1,5 +1,5 @@
 {
-  "name": "hitster",
+  "name": "Music Quiz",
   "version": "1.0.0",
   "scripts": {
     "install:all": "cd server && npm install && cd ../client && npm install",

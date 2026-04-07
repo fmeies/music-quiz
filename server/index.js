@@ -18,7 +18,6 @@ app.use(express.json());
 
 const rooms = {}; // roomId → gameState
 const revealTimers = {}; // roomId → timeout
-const nextTurnTimers = {}; // roomId → timeout
 
 function createRoom(hostId, hostName) {
   return {
@@ -55,7 +54,7 @@ function roomPublicState(room) {
           challenged: p.challenged,
           // Only hide the year of the current round's card; starter cards stay visible
           timeline: hideCurrentYear
-            ? p.timeline.map(c => c.trackId === currentTrackId ? { ...c, year: null } : c)
+            ? p.timeline.map(c => c.trackId === currentTrackId ? { trackId: c.trackId } : c)
             : p.timeline,
           timelineCount: p.timeline.length,
         }
@@ -71,7 +70,6 @@ function roomPublicState(room) {
       : room.currentCard,
     playlist: room.playlist,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
-    nextTurnTimeoutSeconds: parseInt(process.env.NEXT_TURN_TIMEOUT_SECONDS || '5'),
   };
 }
 
@@ -116,7 +114,6 @@ function pickRandomTrack(room) {
 function triggerNextTurn(roomId) {
   const room = rooms[roomId];
   if (!room || room.phase !== 'reveal') return;
-  if (nextTurnTimers[roomId]) { clearTimeout(nextTurnTimers[roomId]); delete nextTurnTimers[roomId]; }
 
   let attempts = 0;
   do {
@@ -130,12 +127,10 @@ function triggerNextTurn(roomId) {
   if (!startTurn(room)) {
     room.phase = 'gameover';
     io.to(roomId).emit('gameState', roomPublicState(room));
-    io.to(roomId).emit('notification', 'All songs played! Game over.');
     return;
   }
 
   io.to(roomId).emit('gameState', roomPublicState(room));
-  io.to(roomId).emit('notification', `${room.players[room.currentPlayerId].name}'s turn!`);
 }
 
 function triggerReveal(roomId) {
@@ -167,14 +162,10 @@ function triggerReveal(roomId) {
   }
 
   io.to(roomId).emit('gameState', roomPublicState(room));
-  io.to(roomId).emit('notification', `"${room.currentCard.title}" is from ${year}. ${correct ? `${activePlayer.name} was right! ✅` : `${activePlayer.name} was wrong! ❌`}`);
-
-  const nextTurnDelay = parseInt(process.env.NEXT_TURN_TIMEOUT_SECONDS || '5') * 1000;
-  nextTurnTimers[roomId] = setTimeout(() => triggerNextTurn(roomId), nextTurnDelay);
 }
 
-function startTurn(room, trackOverride) {
-  const track = trackOverride || pickRandomTrack(room);
+function startTurn(room) {
+  const track = pickRandomTrack(room);
   if (!track) return false;
   room.phase = 'playing';
   room.currentCard = track;
@@ -268,7 +259,6 @@ io.on('connection', (socket) => {
 
       room.playlist = { id: match[1], tracks };
       io.to(roomId).emit('gameState', roomPublicState(room));
-      io.to(roomId).emit('notification', `Playlist loaded: ${tracks.length} songs`);
     } catch (e) {
       socket.emit('error', 'Failed to load playlist: ' + e.message);
     }
@@ -296,7 +286,6 @@ io.on('connection', (socket) => {
     if (!startTurn(room)) return socket.emit('error', 'No tracks available');
 
     io.to(roomId).emit('gameState', roomPublicState(room));
-    io.to(roomId).emit('notification', `Game started! ${room.players[room.currentPlayerId].name} goes first.`);
   });
 
   // Only the active player places their card
@@ -314,8 +303,6 @@ io.on('connection', (socket) => {
     revealTimers[roomId] = setTimeout(() => triggerReveal(roomId), timeout);
 
     io.to(roomId).emit('gameState', roomPublicState(room));
-    const timeoutSec = parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10');
-    io.to(roomId).emit('notification', `${player.name} placed the card — challenge within ${timeoutSec} seconds!`);
   });
 
   // Other players challenge the active player's placement
@@ -335,18 +322,6 @@ io.on('connection', (socket) => {
     triggerReveal(roomId);
   });
 
-  // Host can manually trigger reveal (override for the auto-timer)
-  socket.on('reveal', ({ roomId }) => {
-    const room = rooms[roomId];
-    if (!room || room.hostId !== socket.id || room.phase !== 'placed') return;
-    if (revealTimers[roomId]) {
-      clearTimeout(revealTimers[roomId]);
-      delete revealTimers[roomId];
-    }
-    triggerReveal(roomId);
-  });
-
-  // Host can skip the reveal countdown early
   socket.on('nextTurn', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.id || room.phase !== 'reveal') return;
@@ -366,11 +341,10 @@ io.on('connection', (socket) => {
           room.hostId = Object.keys(room.players)[0];
         }
         io.to(roomId).emit('gameState', roomPublicState(room));
-        io.to(roomId).emit('notification', `${name} left the room.`);
       }
     }
   });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3011;
 server.listen(PORT, () => console.log(`Music Quiz server running on port ${PORT}`));

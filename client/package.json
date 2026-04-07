@@ -9,11 +9,11 @@
     "socket.io-client": "^4.6.1"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "PORT=3010 react-scripts start",
     "build": "react-scripts build"
   },
   "homepage": "/music-quiz",
-  "proxy": "http://localhost:3001",
+  "proxy": "http://localhost:3011",
   "browserslist": {
     "production": [">0.2%", "not dead", "not op_mini all"],
     "development": ["last 1 chrome version"]

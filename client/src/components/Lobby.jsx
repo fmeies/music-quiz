@@ -57,7 +57,7 @@ export default function Lobby() {
 
           <button
             className="btn-start"
-            disabled={!gameState.playlist || !spotifyToken || players.length < 1}
+            disabled={!gameState.playlist || players.length < 1}
             onClick={startGame}
           >
             🎵 Start game

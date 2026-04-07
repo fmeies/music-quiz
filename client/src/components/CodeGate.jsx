@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const BASE = process.env.PUBLIC_URL || '';
+const SERVER = process.env.REACT_APP_SERVER_URL || '';
 
 export default function CodeGate({ onVerified }) {
   const [code, setCode] = useState('');
@@ -11,7 +11,7 @@ export default function CodeGate({ onVerified }) {
     e.preventDefault();
     setLoading(true);
     setError(false);
-    const res = await fetch(`${BASE}/verify?code=${encodeURIComponent(code)}`);
+    const res = await fetch(`${SERVER}/verify?code=${encodeURIComponent(code)}`);
     const { ok } = await res.json();
     if (ok) {
       onVerified();

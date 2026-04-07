@@ -7,15 +7,12 @@ import GameScreen from './components/GameScreen';
 import './App.css';
 
 function AppInner() {
-  const { connected, gameState, roomId, notification, error } = useGame();
+  const { connected, gameState, roomId, error } = useGame();
 
   return (
     <div className="app">
       {!connected && (
         <div className="connecting-banner">⏳ Connecting to server…</div>
-      )}
-      {notification && (
-        <div className="notification">{notification}</div>
       )}
       {error && (
         <div className="error-toast">❌ {error}</div>

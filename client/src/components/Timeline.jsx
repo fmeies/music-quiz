@@ -2,6 +2,18 @@ import React from 'react';
 import { useGame } from '../context/GameContext';
 
 function TimelineCard({ card }) {
+  if (!card.title) {
+    return (
+      <div className="timeline-card">
+        <div style={{ width: 36, height: 36, borderRadius: 4, background: '#333', flexShrink: 0 }} />
+        <div className="card-info">
+          <span className="card-title" style={{ color: '#555' }}>???</span>
+          <span className="card-artist" style={{ color: '#555' }}>???</span>
+          <span className="card-year" style={{ color: '#555' }}>?</span>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="timeline-card">
       {card.albumArt && <img src={card.albumArt} alt="" />}
