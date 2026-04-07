@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/music-quiz',
+  base: '/music-quiz/',
   server: {
     port: 3010,
     proxy: {
