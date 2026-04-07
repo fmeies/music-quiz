@@ -3,8 +3,7 @@ import { io } from 'socket.io-client';
 
 const GameContext = createContext(null);
 
-const BASE = process.env.PUBLIC_URL || '';
-const SERVER = process.env.REACT_APP_SERVER_URL || '';
+const BASE = import.meta.env.BASE_URL.slice(0, -1); // '' in dev, '/music-quiz' in prod
 
 export function GameProvider({ children }) {
   const socketRef = useRef(null);
@@ -16,7 +15,7 @@ export function GameProvider({ children }) {
   const [spotifyToken, setSpotifyToken] = useState(null);
 
   useEffect(() => {
-    const socket = io(SERVER || window.location.origin, { path: SERVER ? '/socket.io' : `${BASE}/socket.io` });
+    const socket = io(window.location.origin, { path: `${BASE}/socket.io` });
     socketRef.current = socket;
 
     socket.on('connect', () => setConnected(true));
@@ -50,7 +49,7 @@ export function GameProvider({ children }) {
   });
 
   const connectSpotify = async () => {
-    const res = await fetch(`${SERVER}/auth/spotify/url?roomId=${roomId}`);
+    const res = await fetch(`${BASE}/auth/spotify/url?roomId=${roomId}`);
     const { url } = await res.json();
     window.open(url, '_blank', 'width=500,height=700');
   };

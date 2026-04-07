@@ -7,7 +7,7 @@ Music quiz party game inspired by Hitster. Players listen to Spotify tracks and 
 ## Architecture
 
 **Two-service app:**
-- `client/` — React 18 SPA (port 3010 in dev, served via nginx in prod)
+- `client/` — React 18 SPA built with Vite (port 3010 in dev, served via nginx in prod)
 - `server/` — Node.js + Express + Socket.io game server (port 3011)
 
 **State management:** All game state lives in server memory (the `rooms` object in `server/index.js`). No database — state resets on server restart. The client subscribes via Socket.io and renders from `GameContext.jsx`.
@@ -22,11 +22,7 @@ npm run dev:server    # backend with nodemon on :3011
 npm run dev:client    # frontend with react-scripts on :3010 (PORT=3010 baked into start script)
 ```
 
-In dev, the client connects directly to the server via `REACT_APP_SERVER_URL=http://localhost:3011`. Create `client/.env.development` (gitignored) with:
-
-```
-REACT_APP_SERVER_URL=http://localhost:3011
-```
+In dev, Vite's built-in proxy (configured in `vite.config.js`) forwards `/verify`, `/auth`, and `/socket.io` (including WebSocket) to `http://localhost:3011`. No env file needed.
 
 ## Production (Docker)
 

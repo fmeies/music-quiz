@@ -1,4 +1,4 @@
 node_modules/
 server/.env
 client/.env.development
-client/build/
+client/dist/
