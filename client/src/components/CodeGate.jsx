@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const BASE = import.meta.env.BASE_URL.slice(0, -1);
+const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
 
 export default function CodeGate({ onVerified }) {
   const [code, setCode] = useState('');

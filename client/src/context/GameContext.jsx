@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 
 const GameContext = createContext(null);
 
-const BASE = import.meta.env.BASE_URL.slice(0, -1); // '' in dev, '/music-quiz' in prod
+const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
 
 export function GameProvider({ children }) {
   const socketRef = useRef(null);
