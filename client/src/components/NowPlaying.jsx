@@ -10,6 +10,7 @@ export default function NowPlaying() {
 
   const card = gameState?.currentCard;
   const phase = gameState?.phase;
+  const result = gameState?.lastResult;
 
   // Load Spotify Web Playback SDK and init player
   useEffect(() => {
@@ -42,15 +43,15 @@ export default function NowPlaying() {
       });
       player.addListener('initialization_error', ({ message }) => {
         console.error('SDK init error:', message);
-        setSdkError('Init-Fehler: ' + message);
+        setSdkError('Init error: ' + message);
       });
       player.addListener('authentication_error', ({ message }) => {
         console.error('SDK auth error:', message);
-        setSdkError('Auth-Fehler: ' + message);
+        setSdkError('Auth error: ' + message);
       });
       player.addListener('account_error', ({ message }) => {
         console.error('SDK account error:', message);
-        setSdkError('Account-Fehler (Premium nötig): ' + message);
+        setSdkError('Account error (Spotify Premium required): ' + message);
       });
 
       player.connect();
@@ -75,9 +76,9 @@ export default function NowPlaying() {
     };
   }, [isHost, spotifyToken]);
 
-  // Pause when round ends
+  // Pause when reveal starts (song keeps playing through the challenge phase)
   useEffect(() => {
-    if (phase !== 'playing') {
+    if (phase === 'reveal' || phase === 'gameover') {
       playerRef.current?.pause();
       setPlaying(false);
     }
@@ -96,7 +97,7 @@ export default function NowPlaying() {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         console.error('Play API error:', res.status, body);
-        setSdkError(`Play fehlgeschlagen (${res.status}): ${body?.error?.message || ''}`);
+        setSdkError(`Playback failed (${res.status}): ${body?.error?.message || ''}`);
       }
     }
   };
@@ -106,16 +107,9 @@ export default function NowPlaying() {
   return (
     <div className="now-playing">
       <div className="now-playing-inner">
-        <div className="album-art-slot">
-          {card.albumArt && (
-            <img
-              src={card.albumArt}
-              alt="Album Art"
-              className="album-art"
-              style={{ visibility: (phase === 'reveal' || phase === 'gameover') ? 'visible' : 'hidden' }}
-            />
-          )}
-        </div>
+        {(phase === 'reveal' || phase === 'gameover') && card.albumArt && (
+          <img src={card.albumArt} alt="Album Art" className="album-art" />
+        )}
 
         <div className="song-info">
           {phase === 'reveal' || phase === 'gameover' ? (
@@ -123,6 +117,15 @@ export default function NowPlaying() {
               <span className="song-title">{card.title}</span>
               <span className="song-artist">{card.artist}</span>
               <span className="song-year reveal-year">{card.year}</span>
+              {phase === 'reveal' && result && (
+                <span className={`result-label ${result.correct ? 'result-right' : 'result-wrong'}`}>
+                  {result.correct
+                    ? `${result.playerName} is right!`
+                    : result.challengers.length > 0
+                      ? `${result.challengers.join(', ')} ${result.challengers.length > 1 ? 'are' : 'is'} right!`
+                      : `${result.playerName} is wrong!`}
+                </span>
+              )}
             </>
           ) : (
             <>
@@ -134,7 +137,7 @@ export default function NowPlaying() {
 
         <div className="player-controls">
           {sdkError && <span className="hint" style={{color:'red'}}>❌ {sdkError}</span>}
-          {isHost && !sdkError && (
+          {isHost && spotifyToken && !sdkError && (
             deviceId ? (
               <button className="btn-play" onClick={togglePlay}>
                 {playing ? '⏸ Pause' : '▶ Play'}

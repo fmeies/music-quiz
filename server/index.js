@@ -34,6 +34,7 @@ function createRoom(hostId, hostName) {
     playlist: null,
     usedTracks: [],
     spotifyToken: null,
+    lastResult: null,  // { playerName, correct, challengers: [name] }
   };
 }
 
@@ -69,6 +70,7 @@ function roomPublicState(room) {
         }
       : room.currentCard,
     playlist: room.playlist,
+    lastResult: room.lastResult,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
   };
 }
@@ -150,15 +152,19 @@ function triggerReveal(roomId) {
 
   if (correct) {
     activePlayer.score += 1;
+    room.lastResult = { playerName: activePlayer.name, correct: true, challengers: [] };
   } else {
     activePlayer.timeline.splice(cardIdx, 1);
+    const challengers = [];
     Object.values(room.players).forEach(p => {
       if (p.challenged) {
         p.score += 1;
+        challengers.push(p.name);
         const insertIdx = p.timeline.findIndex(c => c.year > year);
         p.timeline.splice(insertIdx === -1 ? p.timeline.length : insertIdx, 0, { ...room.currentCard });
       }
     });
+    room.lastResult = { playerName: activePlayer.name, correct: false, challengers };
   }
 
   io.to(roomId).emit('gameState', roomPublicState(room));

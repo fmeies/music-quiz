@@ -210,18 +210,19 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 15px; }
 }
 
 .now-playing-inner {
-  max-width: 700px; margin: 0 auto;
   display: flex; align-items: center; gap: 16px;
   height: 80px;
 }
 
-.album-art-slot { width: 80px; height: 80px; flex-shrink: 0; }
-.album-art { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; }
+.album-art { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
 
-.song-info { flex: 1; }
+.song-info { flex: 1; text-align: left; }
 .song-title { display: block; font-size: 20px; font-weight: 700; }
 .song-artist { display: block; color: var(--muted); font-size: 14px; }
 .song-year { display: block; color: var(--accent); font-size: 24px; font-weight: 800; margin-top: 4px; }
+.result-label { display: block; font-size: 16px; font-weight: 700; margin-top: 4px; }
+.result-right { color: var(--accent); }
+.result-wrong { color: #e05; }
 
 .mystery-label { display: block; font-size: 18px; font-weight: 700; }
 .mystery-sub { display: block; color: var(--muted); font-size: 13px; }
