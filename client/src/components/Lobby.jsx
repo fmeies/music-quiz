@@ -39,7 +39,19 @@ export default function Lobby() {
           )}
 
           <h3>Playlist</h3>
-          <p className="hint">Paste a public Spotify playlist URL:</p>
+          {gameState.playlists?.length > 0 && (
+            <select
+              className="playlist-select"
+              value={playlistUrl}
+              onChange={e => setPlaylistUrl(e.target.value)}
+            >
+              <option value="">– Select playlist –</option>
+              {gameState.playlists.map(p => (
+                <option key={p.url} value={p.url}>{p.name}</option>
+              ))}
+              <option value="">– Enter URL manually –</option>
+            </select>
+          )}
           <div className="input-row">
             <input
               type="text"

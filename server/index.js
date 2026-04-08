@@ -90,6 +90,10 @@ function roomPublicState(room) {
     lastResult: room.lastResult,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
     defaultPlaylistUrl: process.env.DEFAULT_PLAYLIST_URL || null,
+    playlists: (process.env.PLAYLISTS || '').split(',').flatMap(entry => {
+      const [name, url] = entry.split('|');
+      return name && url ? [{ name: name.trim(), url: url.trim() }] : [];
+    }),
   };
 }
 
