@@ -173,12 +173,14 @@ function triggerNextTurn(roomId) {
   const room = rooms[roomId];
   if (!room || room.phase !== 'reveal') return;
 
-  let attempts = 0;
-  do {
-    room.currentTurnIndex = (room.currentTurnIndex + 1) % room.playerOrder.length;
-    attempts++;
-  } while (!room.players[room.playerOrder[room.currentTurnIndex]] && attempts < room.playerOrder.length);
+  room.playerOrder = room.playerOrder.filter(id => room.players[id]);
+  if (room.playerOrder.length === 0) {
+    room.phase = 'gameover';
+    io.to(roomId).emit('gameState', roomPublicState(room));
+    return;
+  }
 
+  room.currentTurnIndex = (room.currentTurnIndex + 1) % room.playerOrder.length;
   room.currentPlayerId = room.playerOrder[room.currentTurnIndex];
   room.round += 1;
 
