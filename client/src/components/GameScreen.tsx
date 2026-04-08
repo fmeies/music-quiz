@@ -32,6 +32,7 @@ export default function GameScreen() {
       return () => clearInterval(interval);
     }
     setCountdown(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, gameState?.currentPlayerId, gameState?.round]);
 
   if (!gameState) return null;

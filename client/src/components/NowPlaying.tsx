@@ -103,6 +103,7 @@ export default function NowPlaying() {
             );
       })
       .catch((err: Error) => setSdkError(`Playback error: ${err.message}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.trackId]);
 
   // Pause when game is over

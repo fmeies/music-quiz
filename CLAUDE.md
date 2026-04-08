@@ -7,10 +7,12 @@ Music quiz party game inspired by Hitster. Players listen to Spotify tracks and 
 ## Architecture
 
 **Two-service app:**
-- `client/` — React 18 SPA built with Vite (port 3010 in dev, served via nginx in prod)
-- `server/` — Node.js + Express + Socket.io game server (port 3011)
+- `client/` — React 18 SPA built with Vite + TypeScript (port 3010 in dev, served via nginx in prod)
+- `server/` — Node.js + Express + Socket.io game server, written in TypeScript, compiled to CommonJS (port 3011)
 
-**State management:** All game state lives in server memory (the `rooms` object in `server/index.js`). No database — state resets on server restart. The client subscribes via Socket.io and renders from `GameContext.jsx`.
+**Language:** The entire codebase is TypeScript. Server compiles via `tsc` to `dist/`; client is transpiled at build time by Vite. Shared type contracts live in `server/types.ts` and `client/src/types.ts`.
+
+**State management:** All game state lives in server memory (the `rooms` object in `server/index.ts`). No database — state resets on server restart. The client subscribes via Socket.io and renders from `GameContext.tsx`.
 
 **Communication:** Socket.io for all game events; REST only for Spotify OAuth (`/auth/spotify`, `/auth/spotify/callback`) and access code verification (`/verify`).
 
@@ -22,7 +24,7 @@ npm run dev:server    # backend with nodemon on :3011
 npm run dev:client    # frontend with Vite on :3010
 ```
 
-In dev, Vite's built-in proxy (configured in `vite.config.js`) forwards `/verify`, `/auth`, and `/socket.io` (including WebSocket) to `http://localhost:3011`. Copy `client/.env.example` to `client/.env` (default values work for dev).
+In dev, Vite's built-in proxy (configured in `vite.config.ts`) forwards `/verify`, `/auth`, and `/socket.io` (including WebSocket) to `http://localhost:3011`. Copy `client/.env.example` to `client/.env` (default values work for dev).
 
 ## Production (Docker)
 
@@ -70,12 +72,14 @@ Phases cycle through: `lobby` → `playing` → `placed` → `reveal` → back t
 
 | File | Purpose |
 |---|---|
-| `server/index.js` | Express app, Socket.io event handlers, Spotify OAuth, timer management |
-| `server/gameLogic.js` | Pure game logic functions — imported by index.js and unit-tested directly |
-| `client/src/context/GameContext.jsx` | Socket.io client, shared game state, action dispatchers |
-| `client/src/components/GameScreen.jsx` | Main game UI, phase rendering, countdowns |
-| `client/src/components/Timeline.jsx` | Drag-and-drop card placement |
-| `client/src/components/NowPlaying.jsx` | Spotify Web Playback SDK integration |
+| `server/index.ts` | Express app, Socket.io event handlers, Spotify OAuth, timer management |
+| `server/gameLogic.ts` | Pure game logic functions — imported by index.ts and unit-tested directly |
+| `server/types.ts` | Shared server-side TypeScript types (`Room`, `InternalPlayer`, `GameState`, …) |
+| `client/src/context/GameContext.tsx` | Socket.io client, shared game state, action dispatchers |
+| `client/src/types.ts` | Client-side TypeScript types mirroring server's public types |
+| `client/src/components/GameScreen.tsx` | Main game UI, phase rendering, countdowns |
+| `client/src/components/Timeline.tsx` | Drag-and-drop card placement |
+| `client/src/components/NowPlaying.tsx` | Spotify Web Playback SDK integration |
 
 ## Testing & Tooling
 
@@ -86,10 +90,10 @@ npm run format    # Prettier (write)
 npm run format:check  # Prettier (check only, used in CI)
 ```
 
-**Server** — Jest + Supertest. Tests live in `server/__tests__/`:
-- `gameLogic.test.js` — unit tests for pure functions
-- `scoring.test.js` — `applyReveal` and `advanceTurn` logic
-- `api.test.js` — REST endpoint integration tests
+**Server** — Jest + Supertest + ts-jest. Tests live in `server/__tests__/`:
+- `gameLogic.test.ts` — unit tests for pure functions
+- `scoring.test.ts` — `applyReveal` and `advanceTurn` logic
+- `api.test.ts` — REST endpoint integration tests
 
 **Client** — Vitest + Testing Library. Tests live in `client/src/__tests__/`.
 
