@@ -76,6 +76,21 @@ export default function NowPlaying() {
     };
   }, [isHost, spotifyToken]);
 
+  // Auto-play when a new track starts
+  useEffect(() => {
+    if (phase !== 'playing' || !isHost || !deviceId || !spotifyToken || !card) return;
+    fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${spotifyToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uris: [`spotify:track:${card.trackId}`] }),
+    }).then(res => {
+      if (res.ok) setPlaying(true);
+      else res.json().catch(() => ({})).then(body =>
+        setSdkError(`Playback failed (${res.status}): ${body?.error?.message || ''}`)
+      );
+    });
+  }, [card?.trackId]);
+
   // Pause when reveal starts (song keeps playing through the challenge phase)
   useEffect(() => {
     if (phase === 'reveal' || phase === 'gameover') {

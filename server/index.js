@@ -68,8 +68,11 @@ function roomPublicState(room) {
           artist: room.currentCard?.artist,
           albumArt: room.currentCard?.albumArt,
         }
-      : room.currentCard,
-    playlist: room.playlist,
+      : room.currentCard && (({ isrc, ...rest }) => rest)(room.currentCard),
+    playlist: room.playlist && {
+      ...room.playlist,
+      tracks: room.playlist.tracks.map(({ isrc, ...t }) => t),
+    },
     lastResult: room.lastResult,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
   };
@@ -88,6 +91,25 @@ async function getSpotifyToken() {
   return res.data.access_token;
 }
 
+async function getMusicBrainzYear(isrc) {
+  try {
+    const res = await axios.get(
+      `https://musicbrainz.org/ws/2/isrc/${isrc}?fmt=json&inc=releases`,
+      { headers: { 'User-Agent': 'MusicQuiz/1.0 (music-quiz-party-game)' } }
+    );
+    let earliest = null;
+    for (const rec of (res.data.recordings || [])) {
+      for (const release of (rec.releases || [])) {
+        const y = release.date ? parseInt(release.date) : NaN;
+        if (!isNaN(y) && y > 1000 && (!earliest || y < earliest)) earliest = y;
+      }
+    }
+    return earliest;
+  } catch {
+    return null;
+  }
+}
+
 async function getPlaylistTracks(playlistId, token) {
   let tracks = [];
   let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
@@ -104,6 +126,7 @@ async function getPlaylistTracks(playlistId, token) {
       artist: i.track.artists.map(a => a.name).join(', '),
       year: parseInt(i.track.album.release_date.substring(0, 4)),
       albumArt: i.track.album.images?.[1]?.url || null,
+      isrc: i.track.external_ids?.isrc || null,
     }));
 }
 
@@ -170,13 +193,23 @@ function triggerReveal(roomId) {
   io.to(roomId).emit('gameState', roomPublicState(room));
 }
 
+async function enrichCurrentCardYear(room, trackId, isrc) {
+  const mbYear = await getMusicBrainzYear(isrc);
+  if (mbYear && room.currentCard?.trackId === trackId) {
+    room.currentCard.year = mbYear;
+    const playlistTrack = room.playlist?.tracks.find(t => t.trackId === trackId);
+    if (playlistTrack) playlistTrack.year = mbYear;
+  }
+}
+
 function startTurn(room) {
   const track = pickRandomTrack(room);
   if (!track) return false;
   room.phase = 'playing';
-  room.currentCard = track;
+  room.currentCard = { ...track };
   room.usedTracks.push(track.trackId);
   Object.values(room.players).forEach(p => { p.challenged = false; });
+  if (track.isrc) enrichCurrentCardYear(room, track.trackId, track.isrc); // fire & forget
   return true;
 }
 
