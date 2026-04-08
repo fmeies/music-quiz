@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 
 const isMobile = window.matchMedia('(pointer: coarse)').matches;
+const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
 
 export default function JoinScreen() {
   const { createRoom, joinRoom } = useGame();
@@ -9,6 +10,18 @@ export default function JoinScreen() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
+
+  useEffect(() => {
+    fetch(`${BASE}/rooms/single`)
+      .then(r => r.json())
+      .then(({ roomId }) => {
+        if (roomId) {
+          setCode(roomId);
+          setMode('join');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleCreate = async () => {
     if (!name.trim()) return setErr('Please enter your name');

@@ -8,6 +8,7 @@ export default defineConfig({
     port: 3010,
     proxy: {
       '/verify': 'http://localhost:3011',
+      '/rooms': 'http://localhost:3011',
       '/auth': 'http://localhost:3011',
       '/socket.io': {
         target: 'http://localhost:3011',

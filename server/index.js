@@ -258,6 +258,11 @@ app.get('/auth/spotify/url', (req, res) => {
   res.json({ url });
 });
 
+app.get('/rooms/single', (req, res) => {
+  const ids = Object.keys(rooms);
+  res.json({ roomId: ids.length === 1 ? ids[0] : null });
+});
+
 app.get('/verify', (req, res) => {
   const { code } = req.query;
   res.json({ ok: code === process.env.APP_CODE });
