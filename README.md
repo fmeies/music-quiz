@@ -100,6 +100,8 @@ docker compose up -d --build    # Rebuild after code changes
 music-quiz/
 ├── server/
 │   ├── index.js          # Express + Socket.io + Spotify API
+│   ├── gameLogic.js      # Pure game logic (tested independently)
+│   ├── __tests__/        # Jest tests
 │   ├── .env.example
 │   └── package.json
 ├── client/
@@ -108,6 +110,7 @@ music-quiz/
 │   └── src/
 │       ├── App.jsx
 │       ├── App.css
+│       ├── __tests__/    # Vitest tests
 │       ├── context/
 │       │   └── GameContext.jsx   # Socket.io state + actions
 │       └── components/
@@ -119,4 +122,18 @@ music-quiz/
 │           └── Timeline.jsx      # Player's card timeline
 ├── docker-compose.yml
 └── package.json
+```
+
+## Development
+
+```bash
+npm run install:all   # install deps for server and client
+npm run dev:server    # start backend on :3011 (with nodemon)
+npm run dev:client    # start frontend on :3010 (with Vite)
+```
+
+```bash
+npm test              # run all tests
+npm run lint          # ESLint (server + client)
+npm run format        # Prettier
 ```

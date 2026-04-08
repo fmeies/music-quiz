@@ -70,11 +70,30 @@ Phases cycle through: `lobby` → `playing` → `placed` → `reveal` → back t
 
 | File | Purpose |
 |---|---|
-| `server/index.js` | All game logic, Spotify API, Socket.io event handlers |
+| `server/index.js` | Express app, Socket.io event handlers, Spotify OAuth, timer management |
+| `server/gameLogic.js` | Pure game logic functions — imported by index.js and unit-tested directly |
 | `client/src/context/GameContext.jsx` | Socket.io client, shared game state, action dispatchers |
 | `client/src/components/GameScreen.jsx` | Main game UI, phase rendering, countdowns |
 | `client/src/components/Timeline.jsx` | Drag-and-drop card placement |
 | `client/src/components/NowPlaying.jsx` | Spotify Web Playback SDK integration |
+
+## Testing & Tooling
+
+```bash
+npm test          # run all tests (server + client)
+npm run lint      # ESLint for server and client
+npm run format    # Prettier (write)
+npm run format:check  # Prettier (check only, used in CI)
+```
+
+**Server** — Jest + Supertest. Tests live in `server/__tests__/`:
+- `gameLogic.test.js` — unit tests for pure functions
+- `scoring.test.js` — `applyReveal` and `advanceTurn` logic
+- `api.test.js` — REST endpoint integration tests
+
+**Client** — Vitest + Testing Library. Tests live in `client/src/__tests__/`.
+
+**CI** — GitHub Actions runs server, client, and format-check jobs in parallel on every push and PR to `main`.
 
 ## Constraints & Gotchas
 
@@ -85,4 +104,3 @@ Phases cycle through: `lobby` → `playing` → `placed` → `reveal` → back t
 - Playlist loading uses server-side Spotify Client Credentials (no user login needed); only audio playback requires the user OAuth token
 - Next turn is manual — the host must press "Next →" after each reveal; there is no auto-advance timer
 - Challenging immediately collapses the challenge window to 0 s — the first challenger triggers instant reveal (by design)
-- No test suite exists
