@@ -108,10 +108,10 @@ async function getMusicBrainzYear(title, artist) {
     const primaryArtist = artist.split(',')[0].trim();
     const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
     const res = await axios.get(
-      `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=5`,
+      `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
       { headers: { 'User-Agent': 'MusicQuiz/1.0 (music-quiz-party-game)' } }
     );
-    const year = earliestYearFromRecordings(res.data.recordings || []);
+    const year = earliestYearFromRecordings((res.data.recordings || []).filter(r => r.score >= 90));
     if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
   } catch (e) {
     // search failed
