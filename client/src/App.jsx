@@ -26,9 +26,9 @@ function AppInner() {
 }
 
 export default function App() {
-  const [verified, setVerified] = useState(false);
+  const [verified, setVerified] = useState(() => localStorage.getItem('mqVerified') === '1');
 
-  if (!verified) return <CodeGate onVerified={() => setVerified(true)} />;
+  if (!verified) return <CodeGate onVerified={() => { localStorage.setItem('mqVerified', '1'); setVerified(true); }} />;
 
   return (
     <GameProvider>
