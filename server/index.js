@@ -459,6 +459,9 @@ io.on('connection', (socket) => {
     const { roomId, playerId } = socket.data;
     if (!roomId || !playerId || !rooms[roomId]) return;
 
+    const playerName = rooms[roomId].players[playerId]?.name ?? playerId;
+    console.log(`${playerName} disconnected from room ${roomId} (10s grace period)`);
+
     disconnectTimers[playerId] = setTimeout(() => {
       const room = rooms[roomId];
       if (!room) return;
@@ -467,9 +470,11 @@ io.on('connection', (socket) => {
       if (Object.keys(room.players).length === 0) {
         delete rooms[roomId];
         if (inactivityTimers[roomId]) { clearTimeout(inactivityTimers[roomId]); delete inactivityTimers[roomId]; }
+        console.log(`Room ${roomId} deleted — no players left`);
       } else {
         if (room.hostId === playerId) room.hostId = Object.keys(room.players)[0];
         io.to(roomId).emit('gameState', roomPublicState(room));
+        console.log(`${playerName} removed from room ${roomId} after grace period`);
       }
     }, 10000); // 10s grace period for page reload
   });
