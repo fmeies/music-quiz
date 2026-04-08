@@ -89,10 +89,14 @@ function roomPublicState(room) {
     playlist: room.playlist,
     lastResult: room.lastResult,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
-    playlists: (process.env.PLAYLISTS || '').split(',').flatMap(entry => {
-      const [name, url] = entry.split('|');
-      return name && url ? [{ name: name.trim(), url: url.trim() }] : [];
-    }),
+    playlists: Object.keys(process.env)
+      .filter(k => /^PLAYLIST_\d+_NAME$/.test(k))
+      .sort()
+      .flatMap(k => {
+        const n = k.match(/^PLAYLIST_(\d+)_NAME$/)[1];
+        const url = process.env[`PLAYLIST_${n}_URL`];
+        return url ? [{ name: process.env[k], url }] : [];
+      }),
   };
 }
 
