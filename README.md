@@ -32,6 +32,7 @@ A browser-based multiplayer music quiz inspired by the Hitster board game. Playe
 
 ```bash
 cp server/.env.example server/.env
+cp client/.env.example client/.env
 ```
 
 Edit `server/.env`:
@@ -39,10 +40,23 @@ Edit `server/.env`:
 ```
 SPOTIFY_CLIENT_ID=your_client_id
 SPOTIFY_CLIENT_SECRET=your_client_secret
+APP_URL=https://your-domain.com
 REDIRECT_URI=https://your-domain.com/music-quiz/auth/spotify/callback
 PORT=3011
 APP_CODE=your_secret_access_code
+REVEAL_TIMEOUT_SECONDS=10
+
+PLAYLIST_1_NAME=My Playlist
+PLAYLIST_1_URL=https://open.spotify.com/playlist/xxx
 ```
+
+Edit `client/.env` (only needed if you deploy under a different URL path):
+
+```
+VITE_BASE_PATH=/music-quiz/
+```
+
+> **Note:** If you change `VITE_BASE_PATH`, update all reverse-proxy rules to match (the `ProxyPass /music-quiz/…` lines in the Apache example below).
 
 ### 3. Deploy
 
@@ -89,8 +103,8 @@ music-quiz/
 │   ├── .env.example
 │   └── package.json
 ├── client/
-│   ├── public/
-│   │   └── index.html
+│   ├── index.html
+│   ├── .env.example
 │   └── src/
 │       ├── App.jsx
 │       ├── App.css

@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 const GameContext = createContext(null);
 
 const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
+const lsKey = k => `${import.meta.env.BASE_URL}${k}`;
 
 export function GameProvider({ children }) {
   const socketRef = useRef(null);
@@ -16,13 +17,13 @@ export function GameProvider({ children }) {
   const playerIdRef = useRef(null);
 
   useEffect(() => {
-    const socket = io(window.location.origin, { path: `${BASE}/socket.io` });
+    const code = localStorage.getItem(lsKey('mqCode')) || '';
+    const socket = io(window.location.origin, { path: `${BASE}/socket.io`, auth: { code } });
     socketRef.current = socket;
 
     socket.on('connect', () => {
       setConnected(true);
-      if (playerIdRef.current) return; // already in a session
-      const session = JSON.parse(localStorage.getItem('mqSession') || 'null');
+      const session = JSON.parse(localStorage.getItem(lsKey('mqSession')) || 'null');
       if (!session) return;
       socket.emit('reconnectPlayer', session, (res) => {
         if (res.ok) {
@@ -30,7 +31,12 @@ export function GameProvider({ children }) {
           setPlayerId(session.playerId);
           setRoomId(session.roomId);
         } else {
-          localStorage.removeItem('mqSession');
+          // Server no longer has this session (e.g. restart) — reset to join screen
+          localStorage.removeItem(lsKey('mqSession'));
+          playerIdRef.current = null;
+          setPlayerId(null);
+          setRoomId(null);
+          setGameState(null);
         }
       });
     });
@@ -38,7 +44,7 @@ export function GameProvider({ children }) {
     socket.on('gameState', setGameState);
     socket.on('error', (msg) => {
       setError(msg);
-      setTimeout(() => setError(null), 5000);
+      setTimeout(() => setError(null), 15000);
     });
     socket.on('spotifyToken', setSpotifyToken);
 
@@ -51,7 +57,7 @@ export function GameProvider({ children }) {
       playerIdRef.current = res.playerId;
       setPlayerId(res.playerId);
       setRoomId(res.roomId);
-      localStorage.setItem('mqSession', JSON.stringify({ roomId: res.roomId, playerId: res.playerId }));
+      localStorage.setItem(lsKey('mqSession'), JSON.stringify({ roomId: res.roomId, playerId: res.playerId }));
       resolve(res);
     });
   });
@@ -62,7 +68,7 @@ export function GameProvider({ children }) {
       playerIdRef.current = res.playerId;
       setPlayerId(res.playerId);
       setRoomId(res.roomId);
-      localStorage.setItem('mqSession', JSON.stringify({ roomId: res.roomId, playerId: res.playerId }));
+      localStorage.setItem(lsKey('mqSession'), JSON.stringify({ roomId: res.roomId, playerId: res.playerId }));
       resolve(res);
     });
   });
@@ -87,7 +93,7 @@ export function GameProvider({ children }) {
   return (
     <GameContext.Provider value={{
       connected, gameState, playerId, roomId,
-      error,
+      error, clearError: () => setError(null),
       isHost, me, isActivePlayer,
       spotifyToken,
       createRoom, joinRoom, connectSpotify, loadPlaylist, startGame, placeCard, challenge, nextTurn,

@@ -11,8 +11,11 @@ export default function GameScreen() {
 
   useEffect(() => {
     if (phase === 'placed') {
-      const seconds = gameState?.revealTimeoutSeconds ?? 10;
-      setCountdown(seconds);
+      const totalMs = (gameState?.revealTimeoutSeconds ?? 10) * 1000;
+      const elapsed = gameState?.placedAt ? Date.now() - gameState.placedAt : 0;
+      const remainingMs = Math.max(0, totalMs - elapsed);
+      setCountdown(Math.ceil(remainingMs / 1000));
+      if (remainingMs <= 0) return;
       const interval = setInterval(() => {
         setCountdown(c => (c <= 1 ? (clearInterval(interval), 0) : c - 1));
       }, 1000);

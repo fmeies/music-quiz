@@ -15,7 +15,7 @@ export default function CodeGate({ onVerified }) {
       const res = await fetch(`${BASE}/verify?code=${encodeURIComponent(code)}`);
       const { ok } = await res.json();
       if (ok) {
-        onVerified();
+        onVerified(code);
       } else {
         setError(true);
       }

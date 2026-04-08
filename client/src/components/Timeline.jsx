@@ -77,7 +77,7 @@ export default function Timeline({ playerId }) {
         )}
 
         {timeline.map((card, i) => (
-          <React.Fragment key={card.trackId + i}>
+          <React.Fragment key={card.trackId}>
             <TimelineCard card={card} />
             {canPlace && (
               <DropZone index={i + 1} onClick={handleDrop} />

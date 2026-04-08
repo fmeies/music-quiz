@@ -7,7 +7,7 @@ import GameScreen from './components/GameScreen';
 import './App.css';
 
 function AppInner() {
-  const { connected, gameState, roomId, error } = useGame();
+  const { connected, gameState, roomId, error, clearError } = useGame();
 
   return (
     <div className="app">
@@ -15,7 +15,9 @@ function AppInner() {
         <div className="connecting-banner">⏳ Connecting to server…</div>
       )}
       {error && (
-        <div className="error-toast">❌ {error}</div>
+        <div className="error-toast" onClick={clearError} style={{ cursor: 'pointer' }}>
+          ❌ {error} <span style={{ marginLeft: 8, opacity: 0.7 }}>✕</span>
+        </div>
       )}
 
       {!roomId && <JoinScreen />}
@@ -25,10 +27,15 @@ function AppInner() {
   );
 }
 
-export default function App() {
-  const [verified, setVerified] = useState(() => localStorage.getItem('mqVerified') === '1');
+const lsKey = k => `${import.meta.env.BASE_URL}${k}`;
 
-  if (!verified) return <CodeGate onVerified={() => { localStorage.setItem('mqVerified', '1'); setVerified(true); }} />;
+export default function App() {
+  const [verified, setVerified] = useState(() => {
+    localStorage.removeItem('mqVerified'); // migrate away from old flag-only storage
+    return !!localStorage.getItem(lsKey('mqCode'));
+  });
+
+  if (!verified) return <CodeGate onVerified={(code) => { localStorage.setItem(lsKey('mqCode'), code); setVerified(true); }} />;
 
   return (
     <GameProvider>

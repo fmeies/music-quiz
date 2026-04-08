@@ -88,7 +88,7 @@ export default function NowPlaying() {
       else res.json().catch(() => ({})).then(body =>
         setSdkError(`Playback failed (${res.status}): ${body?.error?.message || ''}`)
       );
-    });
+    }).catch(err => setSdkError(`Playback error: ${err.message}`));
   }, [card?.trackId]);
 
   // Pause when reveal starts (song keeps playing through the challenge phase)

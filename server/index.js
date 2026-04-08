@@ -1,9 +1,17 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
+
+const REQUIRED_ENV = ['SPOTIFY_CLIENT_ID', 'SPOTIFY_CLIENT_SECRET', 'REDIRECT_URI', 'APP_CODE', 'APP_URL'];
+const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missingEnv.length) {
+  console.error(`[Config] Missing required environment variables: ${missingEnv.join(', ')}`);
+  process.exit(1);
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -21,8 +29,16 @@ const revealTimers = {}; // roomId → timeout
 const inactivityTimers = {}; // roomId → timeout
 const disconnectTimers = {}; // playerId → timeout
 
+// Alphanumeric without ambiguous chars (0/O, 1/I/l). 32-char alphabet → no modulo bias with 8-bit bytes.
+const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function generateRoomId() {
+  const bytes = crypto.randomBytes(5);
+  return Array.from(bytes, b => ROOM_CODE_CHARS[b % ROOM_CODE_CHARS.length]).join('');
+}
+
 function generateId() {
-  return Math.random().toString(36).substring(2, 9) + Math.random().toString(36).substring(2, 9);
+  return crypto.randomBytes(12).toString('hex');
 }
 
 const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
@@ -30,6 +46,13 @@ const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
 function resetInactivityTimer(roomId) {
   if (inactivityTimers[roomId]) clearTimeout(inactivityTimers[roomId]);
   inactivityTimers[roomId] = setTimeout(() => {
+    const room = rooms[roomId];
+    if (room) {
+      Object.keys(room.players).forEach(pid => {
+        if (disconnectTimers[pid]) { clearTimeout(disconnectTimers[pid]); delete disconnectTimers[pid]; }
+      });
+      if (revealTimers[roomId]) { clearTimeout(revealTimers[roomId]); delete revealTimers[roomId]; }
+    }
     delete rooms[roomId];
     delete inactivityTimers[roomId];
     console.log(`Room ${roomId} removed after 60 min inactivity`);
@@ -49,8 +72,10 @@ function createRoom(hostId, hostName) {
     currentTurnIndex: 0,
     round: 0,
     playlist: null,
-    usedTracks: [],
+    usedTracks: new Set(),
     spotifyToken: null,
+    oauthState: null,
+    placedAt: null,
     lastResult: null,  // { playerName, correct, challengers: [name] }
   };
 }
@@ -88,6 +113,7 @@ function roomPublicState(room) {
       : room.currentCard,
     playlist: room.playlist,
     lastResult: room.lastResult,
+    placedAt: room.placedAt,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
     playlists: Object.keys(process.env)
       .filter(k => /^PLAYLIST_\d+_NAME$/.test(k))
@@ -134,7 +160,7 @@ async function getMusicBrainzYear(title, artist) {
     const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
     const res = await axios.get(
       `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
-      { headers: { 'User-Agent': 'MusicQuiz/1.0 (music-quiz-party-game)' } }
+      { headers: { 'User-Agent': 'MusicQuiz/1.0 (+https://github.com/music-quiz-party-game)' } }
     );
     const year = earliestYearFromRecordings((res.data.recordings || []).filter(r => r.score >= 90));
     if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
@@ -164,9 +190,9 @@ async function getPlaylistTracks(playlistId, token) {
 }
 
 function pickRandomTrack(room) {
-  const available = room.playlist.tracks.filter(t => !room.usedTracks.includes(t.trackId));
+  const available = room.playlist.tracks.filter(t => !room.usedTracks.has(t.trackId));
   if (!available.length) return null;
-  return available[Math.floor(Math.random() * available.length)];
+  return available[crypto.randomInt(available.length)];
 }
 
 function triggerNextTurn(roomId) {
@@ -184,7 +210,7 @@ function triggerNextTurn(roomId) {
   room.currentPlayerId = room.playerOrder[room.currentTurnIndex];
   room.round += 1;
 
-  if (!startTurn(room)) {
+  if (!startTurn(room, roomId)) {
     room.phase = 'gameover';
     io.to(roomId).emit('gameState', roomPublicState(room));
     return;
@@ -233,37 +259,61 @@ function triggerReveal(roomId) {
   io.to(roomId).emit('gameState', roomPublicState(room));
 }
 
+const ENRICH_TIMEOUT_MS = 5000;
+const yearCache = new Map(); // trackId → year (number) | null
+
 async function enrichCurrentCardYear(room, track) {
-  const result = await getMusicBrainzYear(track.title, track.artist);
-  const spotifyYear = track.year;
-  if (result && room.currentCard?.trackId === track.trackId) {
-    const finalYear = Math.min(spotifyYear, result.year);
+  let mbYear;
+  if (yearCache.has(track.trackId)) {
+    mbYear = yearCache.get(track.trackId);
+  } else {
+    const result = await getMusicBrainzYear(track.title, track.artist);
+    mbYear = result ? result.year : null;
+    yearCache.set(track.trackId, mbYear);
+    const spotifyYear = track.year;
+    if (mbYear) {
+      console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${mbYear} (via ${result.via}) → ${Math.min(spotifyYear, mbYear)}`);
+    } else {
+      console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear} (MusicBrainz: kein Treffer)`);
+    }
+  }
+  if (mbYear && room.currentCard?.trackId === track.trackId) {
+    const finalYear = Math.min(track.year, mbYear);
     room.currentCard.year = finalYear;
     const playlistTrack = room.playlist?.tracks.find(t => t.trackId === track.trackId);
     if (playlistTrack) playlistTrack.year = finalYear;
-    console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${result.year} (via ${result.via}) → ${finalYear}`);
-  } else {
-    console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear} (MusicBrainz: kein Treffer)`);
   }
 }
 
-function startTurn(room) {
+// startTurn is synchronous — clients see the new turn immediately.
+// Year enrichment runs in the background and pushes a second update when done.
+function startTurn(room, roomId) {
   const track = pickRandomTrack(room);
   if (!track) return false;
   room.phase = 'playing';
   room.currentCard = { ...track };
-  room.usedTracks.push(track.trackId);
+  room.usedTracks.add(track.trackId);
   Object.values(room.players).forEach(p => { p.challenged = false; });
-  enrichCurrentCardYear(room, track); // fire & forget
+  Promise.race([
+    enrichCurrentCardYear(room, track),
+    new Promise(resolve => setTimeout(resolve, ENRICH_TIMEOUT_MS)),
+  ]).then(() => {
+    // Push year update only while still on this card and in playing phase
+    if (rooms[roomId] && room.currentCard?.trackId === track.trackId) {
+      io.to(roomId).emit('gameState', roomPublicState(room));
+    }
+  });
   return true;
 }
 
 // ─── REST: Spotify OAuth Callback ────────────────────────────────────────────
 
 app.get('/auth/spotify/callback', async (req, res) => {
-  const { code, state: roomId } = req.query;
-  if (!code || !roomId || !rooms[roomId]) return res.status(400).send('Invalid request');
+  const { code, state: oauthState } = req.query;
+  const roomId = oauthState && Object.keys(rooms).find(id => rooms[id].oauthState === oauthState);
+  if (!code || !roomId) return res.status(400).send('Invalid request');
 
+  rooms[roomId].oauthState = null; // consume before async work — prevents replay on concurrent requests
   try {
     const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, REDIRECT_URI } = process.env;
     const creds = Buffer.from(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`).toString('base64');
@@ -283,9 +333,16 @@ app.get('/auth/spotify/callback', async (req, res) => {
 
 app.get('/auth/spotify/url', (req, res) => {
   const { roomId } = req.query;
+  const room = rooms[roomId];
+  if (!room) return res.status(404).json({ error: 'Room not found' });
+
+  const oauthState = crypto.randomBytes(16).toString('hex');
+  room.oauthState = oauthState;
+
   const { SPOTIFY_CLIENT_ID, REDIRECT_URI } = process.env;
-  const scopes = 'streaming user-read-playback-state user-modify-playback-state user-read-email user-read-private';
-  const url = `https://accounts.spotify.com/authorize?response_type=code&client_id=${SPOTIFY_CLIENT_ID}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${roomId}`;
+  // user-read-private is required by the Web Playback SDK to verify Spotify Premium
+  const scopes = 'streaming user-read-playback-state user-modify-playback-state user-read-private';
+  const url = `https://accounts.spotify.com/authorize?response_type=code&client_id=${SPOTIFY_CLIENT_ID}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=${oauthState}`;
   res.json({ url });
 });
 
@@ -302,11 +359,49 @@ app.get('/verify', (req, res) => {
 
 // ─── Socket.io ───────────────────────────────────────────────────────────────
 
+const RATE_LIMITS = {
+  createRoom:   { windowMs: 10000, max: 3 },
+  joinRoom:     { windowMs: 10000, max: 5 },
+  loadPlaylist: { windowMs: 15000, max: 3 },
+  placeCard:    { windowMs:  5000, max: 3 },
+  challenge:    { windowMs:  5000, max: 3 },
+  nextTurn:     { windowMs:  3000, max: 2 },
+};
+
+function makeRateLimiter() {
+  const windows = {};
+  return function isAllowed(event) {
+    const limit = RATE_LIMITS[event];
+    if (!limit) return true;
+    const now = Date.now();
+    const w = windows[event];
+    if (!w || now - w.start > limit.windowMs) {
+      windows[event] = { start: now, count: 1 };
+      return true;
+    }
+    if (w.count >= limit.max) return false;
+    w.count++;
+    return true;
+  };
+}
+
+io.use((socket, next) => {
+  if (socket.handshake.auth.code !== process.env.APP_CODE) {
+    return next(new Error('Unauthorized'));
+  }
+  next();
+});
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+  const rl = makeRateLimiter();
 
   socket.on('createRoom', ({ playerName }, cb) => {
-    const roomId = Math.random().toString(36).substring(2, 7).toUpperCase();
+    if (!rl('createRoom')) return cb({ error: 'Too many requests' });
+    if (!playerName || typeof playerName !== 'string') return cb({ error: 'Invalid name' });
+    playerName = playerName.trim().substring(0, 30);
+    if (!playerName) return cb({ error: 'Name required' });
+    const roomId = generateRoomId();
     const playerId = generateId();
     rooms[roomId] = createRoom(playerId, playerName);
     socket.join(roomId);
@@ -320,6 +415,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('joinRoom', ({ roomId, playerName }, cb) => {
+    if (!rl('joinRoom')) return cb({ error: 'Too many requests' });
+    if (!playerName || typeof playerName !== 'string') return cb({ error: 'Invalid name' });
+    playerName = playerName.trim().substring(0, 30);
+    if (!playerName) return cb({ error: 'Name required' });
     const room = rooms[roomId];
     if (!room) return cb({ error: 'Room not found' });
 
@@ -330,7 +429,7 @@ io.on('connection', (socket) => {
       const starter = pickRandomTrack(room);
       if (starter) {
         room.players[playerId].timeline.push(starter);
-        room.usedTracks.push(starter.trackId);
+        room.usedTracks.add(starter.trackId);
       }
       room.playerOrder.push(playerId);
     }
@@ -366,12 +465,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('loadPlaylist', async ({ roomId, playlistUrl }) => {
+    if (!rl('loadPlaylist')) return;
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.data.playerId) return;
+    if (room.playlistLoading) return socket.emit('error', 'Already loading a playlist');
 
+    if (typeof playlistUrl !== 'string' || playlistUrl.length > 500) return socket.emit('error', 'Invalid playlist URL');
     const match = playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
     if (!match) return socket.emit('error', 'Invalid playlist URL');
 
+    room.playlistLoading = true;
     try {
       const token = await getSpotifyToken();
       const tracks = await getPlaylistTracks(match[1], token);
@@ -381,12 +484,15 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('gameState', roomPublicState(room));
     } catch (e) {
       socket.emit('error', 'Failed to load playlist: ' + e.message);
+    } finally {
+      room.playlistLoading = false;
     }
   });
 
   socket.on('startGame', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.data.playerId) return;
+    if (room.phase !== 'lobby') return;
     if (!room.playlist) return socket.emit('error', 'Please load a playlist first');
 
     room.playerOrder = Object.keys(room.players);
@@ -399,11 +505,11 @@ io.on('connection', (socket) => {
       const starter = pickRandomTrack(room);
       if (starter) {
         room.players[playerId].timeline.push(starter);
-        room.usedTracks.push(starter.trackId);
+        room.usedTracks.add(starter.trackId);
       }
     }
 
-    if (!startTurn(room)) return socket.emit('error', 'No tracks available');
+    if (!startTurn(room, roomId)) return socket.emit('error', 'No tracks available');
 
     resetInactivityTimer(roomId);
     io.to(roomId).emit('gameState', roomPublicState(room));
@@ -411,12 +517,14 @@ io.on('connection', (socket) => {
 
   // Only the active player places their card
   socket.on('placeCard', ({ roomId, position }) => {
+    if (!rl('placeCard')) return;
     const room = rooms[roomId];
     if (!room || room.phase !== 'playing') return;
     if (socket.data.playerId !== room.currentPlayerId) return;
 
     const player = room.players[socket.data.playerId];
     player.timeline.splice(position, 0, { ...room.currentCard });
+    room.placedAt = Date.now();
 
     if (Object.keys(room.players).length === 1) {
       room.phase = 'placed';
@@ -435,6 +543,7 @@ io.on('connection', (socket) => {
 
   // Other players challenge the active player's placement
   socket.on('challenge', ({ roomId }) => {
+    if (!rl('challenge')) return;
     const room = rooms[roomId];
     if (!room || room.phase !== 'placed') return;
     if (socket.data.playerId === room.currentPlayerId) return;
@@ -451,6 +560,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('nextTurn', ({ roomId }) => {
+    if (!rl('nextTurn')) return;
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.data.playerId || room.phase !== 'reveal') return;
     resetInactivityTimer(roomId);
@@ -469,15 +579,35 @@ io.on('connection', (socket) => {
       if (!room) return;
       delete room.players[playerId];
       delete disconnectTimers[playerId];
+
       if (Object.keys(room.players).length === 0) {
         delete rooms[roomId];
+        if (revealTimers[roomId]) { clearTimeout(revealTimers[roomId]); delete revealTimers[roomId]; }
         if (inactivityTimers[roomId]) { clearTimeout(inactivityTimers[roomId]); delete inactivityTimers[roomId]; }
         console.log(`Room ${roomId} deleted — no players left`);
-      } else {
-        if (room.hostId === playerId) room.hostId = Object.keys(room.players)[0];
-        io.to(roomId).emit('gameState', roomPublicState(room));
-        console.log(`${playerName} removed from room ${roomId} after grace period`);
+        return;
       }
+
+      // Keep playerOrder in sync
+      room.playerOrder = room.playerOrder.filter(id => id !== playerId);
+      // Clamp index so it stays valid after shrinking the array
+      if (room.playerOrder.length > 0) {
+        room.currentTurnIndex = room.currentTurnIndex % room.playerOrder.length;
+      }
+
+      if (room.hostId === playerId) room.hostId = Object.keys(room.players)[0];
+
+      // If the active player left mid-turn, skip to the next turn
+      if (room.currentPlayerId === playerId && (room.phase === 'playing' || room.phase === 'placed')) {
+        if (revealTimers[roomId]) { clearTimeout(revealTimers[roomId]); delete revealTimers[roomId]; }
+        room.phase = 'reveal';
+        room.lastResult = null;
+        triggerNextTurn(roomId);
+      } else {
+        io.to(roomId).emit('gameState', roomPublicState(room));
+      }
+
+      console.log(`${playerName} removed from room ${roomId} after grace period`);
     }, 10000); // 10s grace period for page reload
   });
 });
