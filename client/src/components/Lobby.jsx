@@ -3,7 +3,7 @@ import { useGame } from '../context/GameContext';
 
 export default function Lobby() {
   const { gameState, roomId, isHost, loadPlaylist, startGame, connectSpotify, spotifyToken } = useGame();
-  const [playlistUrl, setPlaylistUrl] = useState(gameState?.defaultPlaylistUrl || '');
+  const [playlistUrl, setPlaylistUrl] = useState('');
 
   const players = Object.entries(gameState?.players || {});
 
