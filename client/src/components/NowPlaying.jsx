@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useGame } from '../context/GameContext';
 
 export default function NowPlaying() {
-  const { gameState, isHost, spotifyToken } = useGame();
+  const { gameState, isHost, isActivePlayer, me, spotifyToken } = useGame();
   const [playing, setPlaying] = useState(false);
   const [deviceId, setDeviceId] = useState(null);
   const [sdkError, setSdkError] = useState(null);
@@ -132,15 +132,28 @@ export default function NowPlaying() {
               <span className="song-title">{card.title}</span>
               <span className="song-artist">{card.artist}</span>
               <span className="song-year reveal-year">{card.year}</span>
-              {phase === 'reveal' && result && (
-                <span className={`result-label ${result.correct ? 'result-right' : 'result-wrong'}`}>
-                  {result.correct
+              {phase === 'reveal' && result && (() => {
+                let isRight, label;
+                if (isActivePlayer) {
+                  isRight = result.correct;
+                  label = `${me?.name} ${isRight ? 'is right' : 'is wrong'}!`;
+                } else if (me?.challenged) {
+                  isRight = !result.correct;
+                  label = `${me?.name} ${isRight ? 'is right' : 'is wrong'}!`;
+                } else {
+                  isRight = result.correct;
+                  label = result.correct
                     ? `${result.playerName} is right!`
                     : result.challengers.length > 0
                       ? `${result.challengers.join(', ')} ${result.challengers.length > 1 ? 'are' : 'is'} right!`
-                      : `${result.playerName} is wrong!`}
-                </span>
-              )}
+                      : `${result.playerName} is wrong!`;
+                }
+                return (
+                  <span className={`result-label ${isRight ? 'result-right' : 'result-wrong'}`}>
+                    {label}
+                  </span>
+                );
+              })()}
             </>
           ) : (
             <>
