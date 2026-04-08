@@ -5,12 +5,23 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
+const {
+  generateRoomId,
+  generateId,
+  createRoom,
+  roomPublicState,
+  earliestYearFromRecordings,
+  pickRandomTrack,
+  makeRateLimiter,
+} = require('./gameLogic');
 
 const REQUIRED_ENV = ['SPOTIFY_CLIENT_ID', 'SPOTIFY_CLIENT_SECRET', 'REDIRECT_URI', 'APP_CODE', 'APP_URL'];
-const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
-if (missingEnv.length) {
-  console.error(`[Config] Missing required environment variables: ${missingEnv.join(', ')}`);
-  process.exit(1);
+if (require.main === module) {
+  const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
+  if (missingEnv.length) {
+    console.error(`[Config] Missing required environment variables: ${missingEnv.join(', ')}`);
+    process.exit(1);
+  }
 }
 
 const app = express();
@@ -28,18 +39,6 @@ const rooms = {}; // roomId → gameState
 const revealTimers = {}; // roomId → timeout
 const inactivityTimers = {}; // roomId → timeout
 const disconnectTimers = {}; // playerId → timeout
-
-// Alphanumeric without ambiguous chars (0/O, 1/I/l). 32-char alphabet → no modulo bias with 8-bit bytes.
-const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-function generateRoomId() {
-  const bytes = crypto.randomBytes(5);
-  return Array.from(bytes, b => ROOM_CODE_CHARS[b % ROOM_CODE_CHARS.length]).join('');
-}
-
-function generateId() {
-  return crypto.randomBytes(12).toString('hex');
-}
 
 const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
 
@@ -59,73 +58,6 @@ function resetInactivityTimer(roomId) {
   }, INACTIVITY_MS);
 }
 
-function createRoom(hostId, hostName) {
-  return {
-    hostId,
-    players: {
-      [hostId]: { name: hostName, timeline: [], score: 0, challenged: false }
-    },
-    phase: 'lobby',      // lobby | playing | placed | reveal | gameover
-    currentCard: null,   // { trackId, title, artist, year, albumArt }
-    currentPlayerId: null,
-    playerOrder: [],
-    currentTurnIndex: 0,
-    round: 0,
-    playlist: null,
-    usedTracks: new Set(),
-    spotifyToken: null,
-    oauthState: null,
-    placedAt: null,
-    lastResult: null,  // { playerName, correct, challengers: [name] }
-  };
-}
-
-function roomPublicState(room) {
-  const hideCurrentYear = room.phase === 'playing' || room.phase === 'placed';
-  const currentTrackId = room.currentCard?.trackId;
-  return {
-    phase: room.phase,
-    round: room.round,
-    hostId: room.hostId,
-    currentPlayerId: room.currentPlayerId,
-    players: Object.fromEntries(
-      Object.entries(room.players).map(([id, p]) => [
-        id,
-        {
-          name: p.name,
-          score: p.score,
-          challenged: p.challenged,
-          // Only hide the year of the current round's card; starter cards stay visible
-          timeline: hideCurrentYear
-            ? p.timeline.map(c => c.trackId === currentTrackId ? { trackId: c.trackId } : c)
-            : p.timeline,
-          timelineCount: p.timeline.length,
-        }
-      ])
-    ),
-    currentCard: hideCurrentYear
-      ? {
-          trackId: room.currentCard?.trackId,
-          title: room.currentCard?.title,
-          artist: room.currentCard?.artist,
-          albumArt: room.currentCard?.albumArt,
-        }
-      : room.currentCard,
-    playlist: room.playlist,
-    lastResult: room.lastResult,
-    placedAt: room.placedAt,
-    revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
-    playlists: Object.keys(process.env)
-      .filter(k => /^PLAYLIST_\d+_NAME$/.test(k))
-      .sort()
-      .flatMap(k => {
-        const n = k.match(/^PLAYLIST_(\d+)_NAME$/)[1];
-        const url = process.env[`PLAYLIST_${n}_URL`];
-        return url ? [{ name: process.env[k], url }] : [];
-      }),
-  };
-}
-
 // ─── Spotify Helpers ─────────────────────────────────────────────────────────
 
 async function getSpotifyToken() {
@@ -139,21 +71,6 @@ async function getSpotifyToken() {
   return res.data.access_token;
 }
 
-function earliestYearFromRecordings(recordings) {
-  let earliest = null;
-  for (const rec of recordings) {
-    for (const rg of (rec['release-groups'] || [])) {
-      const y = rg['first-release-date'] ? parseInt(rg['first-release-date']) : NaN;
-      if (!isNaN(y) && y > 1000 && (!earliest || y < earliest)) earliest = y;
-    }
-    for (const release of (rec.releases || [])) {
-      const y = release.date ? parseInt(release.date) : NaN;
-      if (!isNaN(y) && y > 1000 && (!earliest || y < earliest)) earliest = y;
-    }
-  }
-  return earliest;
-}
-
 async function getMusicBrainzYear(title, artist) {
   try {
     const primaryArtist = artist.split(',')[0].trim();
@@ -164,7 +81,7 @@ async function getMusicBrainzYear(title, artist) {
     );
     const year = earliestYearFromRecordings((res.data.recordings || []).filter(r => r.score >= 90));
     if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
-  } catch (e) {
+  } catch {
     // search failed
   }
   return null;
@@ -187,12 +104,6 @@ async function getPlaylistTracks(playlistId, token) {
       year: parseInt(i.track.album.release_date.substring(0, 4)),
       albumArt: i.track.album.images?.[1]?.url || null,
     }));
-}
-
-function pickRandomTrack(room) {
-  const available = room.playlist.tracks.filter(t => !room.usedTracks.has(t.trackId));
-  if (!available.length) return null;
-  return available[crypto.randomInt(available.length)];
 }
 
 function triggerNextTurn(roomId) {
@@ -358,32 +269,6 @@ app.get('/verify', (req, res) => {
 
 
 // ─── Socket.io ───────────────────────────────────────────────────────────────
-
-const RATE_LIMITS = {
-  createRoom:   { windowMs: 10000, max: 3 },
-  joinRoom:     { windowMs: 10000, max: 5 },
-  loadPlaylist: { windowMs: 15000, max: 3 },
-  placeCard:    { windowMs:  5000, max: 3 },
-  challenge:    { windowMs:  5000, max: 3 },
-  nextTurn:     { windowMs:  3000, max: 2 },
-};
-
-function makeRateLimiter() {
-  const windows = {};
-  return function isAllowed(event) {
-    const limit = RATE_LIMITS[event];
-    if (!limit) return true;
-    const now = Date.now();
-    const w = windows[event];
-    if (!w || now - w.start > limit.windowMs) {
-      windows[event] = { start: now, count: 1 };
-      return true;
-    }
-    if (w.count >= limit.max) return false;
-    w.count++;
-    return true;
-  };
-}
 
 io.use((socket, next) => {
   if (socket.handshake.auth.code !== process.env.APP_CODE) {
@@ -613,4 +498,8 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3011;
-server.listen(PORT, () => console.log(`Music Quiz server running on port ${PORT}`));
+if (require.main === module) {
+  server.listen(PORT, () => console.log(`Music Quiz server running on port ${PORT}`));
+}
+
+module.exports = { app, server };
