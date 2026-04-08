@@ -68,11 +68,8 @@ function roomPublicState(room) {
           artist: room.currentCard?.artist,
           albumArt: room.currentCard?.albumArt,
         }
-      : room.currentCard && (({ isrc, ...rest }) => rest)(room.currentCard),
-    playlist: room.playlist && {
-      ...room.playlist,
-      tracks: room.playlist.tracks.map(({ isrc, ...t }) => t),
-    },
+      : room.currentCard,
+    playlist: room.playlist,
     lastResult: room.lastResult,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
   };
@@ -106,36 +103,19 @@ function earliestYearFromRecordings(recordings) {
   return earliest;
 }
 
-async function getMusicBrainzYear(isrc, title, artist) {
-  const headers = { 'User-Agent': 'MusicQuiz/1.0 (music-quiz-party-game)' };
-
-  if (isrc) {
-    try {
-      const res = await axios.get(
-        `https://musicbrainz.org/ws/2/isrc/${isrc}?fmt=json&inc=release-groups`,
-        { headers }
-      );
-      const year = earliestYearFromRecordings(res.data.recordings || []);
-      if (year) return { year, via: `ISRC ${isrc}` };
-    } catch (e) {
-      // ISRC not found or request failed, fall through to search
-    }
-  }
-
-  // Fallback: search by title + primary artist
+async function getMusicBrainzYear(title, artist) {
   try {
     const primaryArtist = artist.split(',')[0].trim();
     const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
     const res = await axios.get(
       `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=5`,
-      { headers }
+      { headers: { 'User-Agent': 'MusicQuiz/1.0 (music-quiz-party-game)' } }
     );
     const year = earliestYearFromRecordings(res.data.recordings || []);
     if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
   } catch (e) {
     // search failed
   }
-
   return null;
 }
 
@@ -155,7 +135,6 @@ async function getPlaylistTracks(playlistId, token) {
       artist: i.track.artists.map(a => a.name).join(', '),
       year: parseInt(i.track.album.release_date.substring(0, 4)),
       albumArt: i.track.album.images?.[1]?.url || null,
-      isrc: i.track.external_ids?.isrc || null,
     }));
 }
 
@@ -223,13 +202,14 @@ function triggerReveal(roomId) {
 }
 
 async function enrichCurrentCardYear(room, track) {
-  const result = await getMusicBrainzYear(track.isrc, track.title, track.artist);
+  const result = await getMusicBrainzYear(track.title, track.artist);
   const spotifyYear = track.year;
   if (result && room.currentCard?.trackId === track.trackId) {
-    room.currentCard.year = result.year;
+    const finalYear = Math.min(spotifyYear, result.year);
+    room.currentCard.year = finalYear;
     const playlistTrack = room.playlist?.tracks.find(t => t.trackId === track.trackId);
-    if (playlistTrack) playlistTrack.year = result.year;
-    console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${result.year} (via ${result.via})`);
+    if (playlistTrack) playlistTrack.year = finalYear;
+    console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${result.year} (via ${result.via}) → ${finalYear}`);
   } else {
     console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear} (MusicBrainz: kein Treffer)`);
   }
