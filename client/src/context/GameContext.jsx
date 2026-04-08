@@ -49,9 +49,10 @@ export function GameProvider({ children }) {
   });
 
   const connectSpotify = async () => {
+    const win = window.open('', '_blank', 'width=500,height=700');
     const res = await fetch(`${BASE}/auth/spotify/url?roomId=${roomId}`);
     const { url } = await res.json();
-    window.open(url, '_blank', 'width=500,height=700');
+    win.location.href = url;
   };
 
   const loadPlaylist = (playlistUrl) => socketRef.current.emit('loadPlaylist', { roomId, playlistUrl });
