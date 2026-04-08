@@ -93,7 +93,7 @@ export default function NowPlaying() {
 
   // Pause when reveal starts (song keeps playing through the challenge phase)
   useEffect(() => {
-    if (phase === 'reveal' || phase === 'gameover') {
+    if (phase === 'gameover') {
       playerRef.current?.pause();
       setPlaying(false);
     }

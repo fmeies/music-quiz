@@ -104,8 +104,10 @@ async function getMusicBrainzYear(isrc) {
         if (!isNaN(y) && y > 1000 && (!earliest || y < earliest)) earliest = y;
       }
     }
+    console.log(`[MusicBrainz] ISRC ${isrc} → ${earliest ?? 'no match'}`);
     return earliest;
-  } catch {
+  } catch (e) {
+    console.warn(`[MusicBrainz] ISRC ${isrc} failed:`, e.message);
     return null;
   }
 }
@@ -331,6 +333,12 @@ io.on('connection', (socket) => {
 
     const player = room.players[socket.id];
     player.timeline.splice(position, 0, { ...room.currentCard });
+
+    if (Object.keys(room.players).length === 1) {
+      room.phase = 'placed';
+      triggerReveal(roomId);
+      return;
+    }
 
     room.phase = 'placed';
 
