@@ -364,6 +364,32 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 15px; }
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 500px) {
   .join-card { padding: 32px 20px; }
-  .now-playing-inner { flex-direction: column; }
-  .timeline { flex-direction: column; align-items: flex-start; }
+
+  .game-header {
+    height: auto; padding: 8px 12px; gap: 6px;
+    grid-template-columns: auto 1fr auto;
+  }
+  .phase-badge { font-size: 11px; padding: 3px 8px; }
+  .round-info { font-size: 12px; }
+  .countdown { font-size: 18px; }
+  .btn-challenge { font-size: 12px; padding: 6px 10px; }
+  .btn-next { font-size: 13px; padding: 8px 16px; }
+
+  .now-playing { padding: 10px 12px; }
+  .now-playing-inner { height: auto; gap: 10px; }
+  .album-art { width: 56px; height: 56px; }
+  .song-title { font-size: 15px; }
+  .song-artist { font-size: 12px; }
+  .song-year { font-size: 18px; }
+  .result-label { font-size: 13px; }
+  .mystery-label { font-size: 15px; }
+
+  .timelines-container { padding: 10px; gap: 12px; }
+  .timeline-wrapper { padding: 10px; }
+  .timeline { gap: 4px; }
+  .timeline-card { min-width: 100px; max-width: 140px; padding: 6px 8px; gap: 6px; }
+  .timeline-card img { width: 28px; height: 28px; }
+  .card-title { font-size: 10px; }
+  .card-year { font-size: 11px; }
+  .drop-zone { min-width: 24px; padding: 6px 4px; font-size: 13px; }
 }

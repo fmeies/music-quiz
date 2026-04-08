@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 
+const isMobile = window.matchMedia('(pointer: coarse)').matches;
+
 export default function JoinScreen() {
   const { createRoom, joinRoom } = useGame();
   const [mode, setMode] = useState(null); // 'create' | 'join'
@@ -29,9 +31,11 @@ export default function JoinScreen() {
 
         {!mode && (
           <div className="mode-buttons">
-            <button className="btn-primary" onClick={() => setMode('create')}>
-              🏠 Create room
-            </button>
+            {!isMobile && (
+              <button className="btn-primary" onClick={() => setMode('create')}>
+                🏠 Create room
+              </button>
+            )}
             <button className="btn-secondary" onClick={() => setMode('join')}>
               🚪 Join room
             </button>
