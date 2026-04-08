@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { GameProvider, useGame } from './context/GameContext';
 import CodeGate from './components/CodeGate';
 import JoinScreen from './components/JoinScreen';
@@ -31,7 +31,7 @@ function AppInner() {
   );
 }
 
-const lsKey = (k) => `${import.meta.env.BASE_URL}${k}`;
+const lsKey = (k: string) => `${import.meta.env.BASE_URL}${k}`;
 
 export default function App() {
   const [verified, setVerified] = useState(() => {

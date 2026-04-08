@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import NowPlaying from './NowPlaying';
 import Timeline from './Timeline';
@@ -13,7 +13,7 @@ export default function GameScreen() {
     challenge,
     nextTurn,
   } = useGame();
-  const [countdown, setCountdown] = useState(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const phase = gameState?.phase;
 
@@ -25,7 +25,9 @@ export default function GameScreen() {
       setCountdown(Math.ceil(remainingMs / 1000));
       if (remainingMs <= 0) return;
       const interval = setInterval(() => {
-        setCountdown((c) => (c <= 1 ? (clearInterval(interval), 0) : c - 1));
+        setCountdown((c) =>
+          c !== null && c <= 1 ? (clearInterval(interval), 0) : (c ?? 0) - 1
+        );
       }, 1000);
       return () => clearInterval(interval);
     }
@@ -35,12 +37,12 @@ export default function GameScreen() {
   if (!gameState) return null;
 
   const players = Object.entries(gameState.players);
-  const activePlayer = gameState.players[gameState.currentPlayerId];
+  const activePlayer = gameState.players[gameState.currentPlayerId ?? ''];
 
   const canChallenge =
     phase === 'placed' &&
     !isActivePlayer &&
-    !gameState.players[playerId]?.challenged;
+    !gameState.players[playerId ?? '']?.challenged;
 
   return (
     <div className="game-screen">
@@ -60,16 +62,19 @@ export default function GameScreen() {
         </span>
 
         <div className="header-actions">
-          {phase === 'placed' && countdown > 0 && (
+          {phase === 'placed' && countdown !== null && countdown > 0 && (
             <span className="countdown">{countdown}</span>
           )}
-          {canChallenge && phase === 'placed' && countdown > 0 && (
-            <button className="btn-challenge" onClick={challenge}>
-              ✋ Challenge!
-            </button>
-          )}
+          {canChallenge &&
+            phase === 'placed' &&
+            countdown !== null &&
+            countdown > 0 && (
+              <button className="btn-challenge" onClick={challenge}>
+                ✋ Challenge!
+              </button>
+            )}
           {!isActivePlayer &&
-            gameState.players[playerId]?.challenged &&
+            gameState.players[playerId ?? '']?.challenged &&
             phase === 'placed' && (
               <span className="challenged-badge">✅ Challenged</span>
             )}

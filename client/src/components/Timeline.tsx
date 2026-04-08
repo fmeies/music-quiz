@@ -1,7 +1,8 @@
 import React from 'react';
 import { useGame } from '../context/GameContext';
+import type { PublicTimelineCard } from '../types';
 
-function TimelineCard({ card }) {
+function TimelineCard({ card }: { card: PublicTimelineCard }) {
   if (!card.title) {
     return (
       <div className="timeline-card">
@@ -40,7 +41,13 @@ function TimelineCard({ card }) {
   );
 }
 
-function DropZone({ index, onClick }) {
+function DropZone({
+  index,
+  onClick,
+}: {
+  index: number;
+  onClick: (index: number) => void;
+}) {
   return (
     <button
       className="drop-zone active"
@@ -52,19 +59,19 @@ function DropZone({ index, onClick }) {
   );
 }
 
-export default function Timeline({ playerId }) {
+export default function Timeline({ playerId }: { playerId: string | null }) {
   const { gameState, placeCard, playerId: myId, isActivePlayer } = useGame();
 
-  const player = gameState?.players?.[playerId];
+  const player = playerId ? gameState?.players?.[playerId] : null;
   if (!player) return null;
 
   const isMe = playerId === myId;
-  const isActiveTimeline = playerId === gameState.currentPlayerId;
-  const phase = gameState.phase;
+  const isActiveTimeline = playerId === gameState?.currentPlayerId;
+  const phase = gameState?.phase;
   const canPlace = isMe && isActivePlayer && phase === 'playing';
   const timeline = player.timeline;
 
-  const handleDrop = (position) => {
+  const handleDrop = (position: number) => {
     if (!canPlace) return;
     placeCard(position);
   };

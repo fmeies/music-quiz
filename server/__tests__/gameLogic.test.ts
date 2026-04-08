@@ -1,4 +1,4 @@
-const {
+import {
   ROOM_CODE_CHARS,
   generateRoomId,
   generateId,
@@ -7,7 +7,8 @@ const {
   earliestYearFromRecordings,
   pickRandomTrack,
   makeRateLimiter,
-} = require('../gameLogic');
+} from '../gameLogic';
+import type { Room, MusicBrainzRecording } from '../types';
 
 describe('generateRoomId', () => {
   it('returns a 5-character string', () => {
@@ -53,7 +54,7 @@ describe('createRoom', () => {
 });
 
 describe('roomPublicState', () => {
-  const baseRoom = () => ({
+  const baseRoom = (): Room => ({
     hostId: 'p1',
     phase: 'lobby',
     round: 0,
@@ -62,6 +63,11 @@ describe('roomPublicState', () => {
     playlist: null,
     lastResult: null,
     placedAt: null,
+    playerOrder: [],
+    currentTurnIndex: 0,
+    usedTracks: new Set(),
+    spotifyToken: null,
+    oauthState: null,
     players: {
       p1: { name: 'Alice', score: 0, challenged: false, timeline: [] },
     },
@@ -88,11 +94,17 @@ describe('roomPublicState', () => {
       albumArt: null,
     };
     room.players.p1.timeline = [
-      { trackId: 't1', title: 'Song', artist: 'Band', year: 1995 },
+      {
+        trackId: 't1',
+        title: 'Song',
+        artist: 'Band',
+        year: 1995,
+        albumArt: null,
+      },
     ];
     const state = roomPublicState(room);
-    expect(state.currentCard.year).toBeUndefined();
-    expect(state.currentCard.title).toBe('Song');
+    expect(state.currentCard?.year).toBeUndefined();
+    expect(state.currentCard?.title).toBe('Song');
     expect(state.players.p1.timeline[0]).toEqual({ trackId: 't1' });
   });
 
@@ -107,7 +119,7 @@ describe('roomPublicState', () => {
       albumArt: null,
     };
     const state = roomPublicState(room);
-    expect(state.currentCard.year).toBeUndefined();
+    expect(state.currentCard?.year).toBeUndefined();
   });
 
   it('reveals year in reveal phase', () => {
@@ -121,7 +133,7 @@ describe('roomPublicState', () => {
       albumArt: null,
     };
     const state = roomPublicState(room);
-    expect(state.currentCard.year).toBe(1995);
+    expect(state.currentCard?.year).toBe(1995);
   });
 
   it('does not strip year from other timeline cards', () => {
@@ -135,8 +147,20 @@ describe('roomPublicState', () => {
       albumArt: null,
     };
     room.players.p1.timeline = [
-      { trackId: 'old', title: 'Old', artist: 'Band', year: 1980 },
-      { trackId: 'current', title: 'New', artist: 'Band', year: 2000 },
+      {
+        trackId: 'old',
+        title: 'Old',
+        artist: 'Band',
+        year: 1980,
+        albumArt: null,
+      },
+      {
+        trackId: 'current',
+        title: 'New',
+        artist: 'Band',
+        year: 2000,
+        albumArt: null,
+      },
     ];
     const state = roomPublicState(room);
     expect(state.players.p1.timeline[0]).toEqual({
@@ -144,6 +168,7 @@ describe('roomPublicState', () => {
       title: 'Old',
       artist: 'Band',
       year: 1980,
+      albumArt: null,
     });
     expect(state.players.p1.timeline[1]).toEqual({ trackId: 'current' });
   });
@@ -161,7 +186,7 @@ describe('earliestYearFromRecordings', () => {
   });
 
   it('extracts year from release-groups', () => {
-    const recordings = [
+    const recordings: MusicBrainzRecording[] = [
       {
         score: 100,
         'release-groups': [{ 'first-release-date': '1991-11-24' }],
@@ -172,7 +197,7 @@ describe('earliestYearFromRecordings', () => {
   });
 
   it('extracts year from releases', () => {
-    const recordings = [
+    const recordings: MusicBrainzRecording[] = [
       {
         score: 100,
         'release-groups': [],
@@ -183,17 +208,30 @@ describe('earliestYearFromRecordings', () => {
   });
 
   it('returns the earliest year across multiple recordings', () => {
-    const recordings = [
-      { 'release-groups': [{ 'first-release-date': '1999' }], releases: [] },
-      { 'release-groups': [{ 'first-release-date': '1985' }], releases: [] },
-      { 'release-groups': [{ 'first-release-date': '2010' }], releases: [] },
+    const recordings: MusicBrainzRecording[] = [
+      {
+        score: 90,
+        'release-groups': [{ 'first-release-date': '1999' }],
+        releases: [],
+      },
+      {
+        score: 90,
+        'release-groups': [{ 'first-release-date': '1985' }],
+        releases: [],
+      },
+      {
+        score: 90,
+        'release-groups': [{ 'first-release-date': '2010' }],
+        releases: [],
+      },
     ];
     expect(earliestYearFromRecordings(recordings)).toBe(1985);
   });
 
   it('ignores invalid years (below 1000)', () => {
-    const recordings = [
+    const recordings: MusicBrainzRecording[] = [
       {
+        score: 90,
         'release-groups': [{ 'first-release-date': '999' }],
         releases: [{ date: '1975' }],
       },
@@ -202,8 +240,9 @@ describe('earliestYearFromRecordings', () => {
   });
 
   it('handles missing date fields gracefully', () => {
-    const recordings = [
+    const recordings: MusicBrainzRecording[] = [
       {
+        score: 90,
         'release-groups': [{ 'first-release-date': null }],
         releases: [{ date: null }],
       },
@@ -215,25 +254,42 @@ describe('earliestYearFromRecordings', () => {
 describe('pickRandomTrack', () => {
   it('returns null when all tracks are used', () => {
     const room = {
-      playlist: { tracks: [{ trackId: 'a' }, { trackId: 'b' }] },
+      playlist: {
+        id: 'p',
+        tracks: [
+          { trackId: 'a', title: '', artist: '', year: 2000, albumArt: null },
+          { trackId: 'b', title: '', artist: '', year: 2001, albumArt: null },
+        ],
+      },
       usedTracks: new Set(['a', 'b']),
-    };
+    } as unknown as Room;
     expect(pickRandomTrack(room)).toBeNull();
   });
 
   it('returns only unused tracks', () => {
     const room = {
       playlist: {
-        tracks: [{ trackId: 'a' }, { trackId: 'b' }, { trackId: 'c' }],
+        id: 'p',
+        tracks: [
+          { trackId: 'a', title: '', artist: '', year: 2000, albumArt: null },
+          { trackId: 'b', title: '', artist: '', year: 2001, albumArt: null },
+          { trackId: 'c', title: '', artist: '', year: 2002, albumArt: null },
+        ],
       },
       usedTracks: new Set(['a', 'b']),
-    };
-    expect(pickRandomTrack(room)).toEqual({ trackId: 'c' });
+    } as unknown as Room;
+    expect(pickRandomTrack(room)).toMatchObject({ trackId: 'c' });
   });
 
   it('returns one of the available tracks', () => {
-    const tracks = [{ trackId: 'x' }, { trackId: 'y' }];
-    const room = { playlist: { tracks }, usedTracks: new Set() };
+    const tracks = [
+      { trackId: 'x', title: '', artist: '', year: 2000, albumArt: null },
+      { trackId: 'y', title: '', artist: '', year: 2001, albumArt: null },
+    ];
+    const room = {
+      playlist: { id: 'p', tracks },
+      usedTracks: new Set<string>(),
+    } as unknown as Room;
     const picked = pickRandomTrack(room);
     expect(tracks).toContainEqual(picked);
   });

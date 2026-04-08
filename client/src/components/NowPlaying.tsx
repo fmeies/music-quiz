@@ -1,12 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useGame } from '../context/GameContext';
 
 export default function NowPlaying() {
   const { gameState, isHost, isActivePlayer, me, spotifyToken } = useGame();
   const [playing, setPlaying] = useState(false);
-  const [deviceId, setDeviceId] = useState(null);
-  const [sdkError, setSdkError] = useState(null);
-  const playerRef = useRef(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [sdkError, setSdkError] = useState<string | null>(null);
+  const playerRef = useRef<Spotify.Player | null>(null);
 
   const card = gameState?.currentCard;
   const phase = gameState?.phase;
@@ -27,7 +27,6 @@ export default function NowPlaying() {
 
       player.addListener('ready', async ({ device_id }) => {
         console.log('Spotify SDK ready, device_id:', device_id);
-        // Transfer playback to this browser device
         await fetch('https://api.spotify.com/v1/me/player', {
           method: 'PUT',
           headers: {
@@ -97,16 +96,16 @@ export default function NowPlaying() {
           res
             .json()
             .catch(() => ({}))
-            .then((body) =>
+            .then((body: { error?: { message?: string } }) =>
               setSdkError(
                 `Playback failed (${res.status}): ${body?.error?.message || ''}`
               )
             );
       })
-      .catch((err) => setSdkError(`Playback error: ${err.message}`));
+      .catch((err: Error) => setSdkError(`Playback error: ${err.message}`));
   }, [card?.trackId]);
 
-  // Pause when reveal starts (song keeps playing through the challenge phase)
+  // Pause when game is over
   useEffect(() => {
     if (phase === 'gameover') {
       playerRef.current?.pause();
@@ -117,7 +116,7 @@ export default function NowPlaying() {
   const togglePlay = async () => {
     if (!deviceId || !spotifyToken || !card) return;
     if (playing) {
-      playerRef.current.pause();
+      playerRef.current?.pause();
     } else {
       const res = await fetch(
         `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
@@ -131,7 +130,9 @@ export default function NowPlaying() {
         }
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
         console.error('Play API error:', res.status, body);
         setSdkError(
           `Playback failed (${res.status}): ${body?.error?.message || ''}`
@@ -158,7 +159,8 @@ export default function NowPlaying() {
               {phase === 'reveal' &&
                 result &&
                 (() => {
-                  let isRight, label;
+                  let isRight: boolean;
+                  let label: string;
                   if (isActivePlayer) {
                     isRight = result.correct;
                     label = `${me?.name} ${isRight ? 'is right' : 'is wrong'}!`;

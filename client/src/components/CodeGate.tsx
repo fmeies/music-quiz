@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 
 const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
 
-export default function CodeGate({ onVerified }) {
+interface Props {
+  onVerified: (code: string) => void;
+}
+
+export default function CodeGate({ onVerified }: Props) {
   const [code, setCode] = useState('');
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(false);
@@ -15,7 +19,7 @@ export default function CodeGate({ onVerified }) {
       const res = await fetch(
         `${BASE}/verify?code=${encodeURIComponent(code)}`
       );
-      const { ok } = await res.json();
+      const { ok } = (await res.json()) as { ok: boolean };
       if (ok) {
         onVerified(code);
       } else {

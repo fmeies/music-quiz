@@ -8,7 +8,7 @@ on:
 
 jobs:
   server:
-    name: Server — Test & Lint
+    name: Server — Typecheck, Test & Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Lint
         run: npm run lint
 
@@ -32,7 +35,7 @@ jobs:
         run: npm test
 
   client:
-    name: Client — Test & Lint
+    name: Client — Typecheck, Test & Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,6 +51,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
 
       - name: Lint
         run: npm run lint

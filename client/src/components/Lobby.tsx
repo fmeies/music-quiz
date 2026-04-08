@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useGame } from '../context/GameContext';
 
 export default function Lobby() {
@@ -15,7 +15,7 @@ export default function Lobby() {
   const [manualMode, setManualMode] = useState(false);
 
   const players = Object.entries(gameState?.players || {});
-  const hasPresets = gameState.playlists?.length > 0;
+  const hasPresets = (gameState?.playlists?.length ?? 0) > 0;
 
   return (
     <div className="lobby">
@@ -24,7 +24,7 @@ export default function Lobby() {
         <strong>{roomId}</strong>
         <button
           className="btn-copy"
-          onClick={() => navigator.clipboard.writeText(roomId)}
+          onClick={() => navigator.clipboard.writeText(roomId ?? '')}
         >
           📋 Copy
         </button>
@@ -35,7 +35,7 @@ export default function Lobby() {
         {players.map(([id, p]) => (
           <div key={id} className="player-chip">
             {p.name}
-            {gameState.hostId === id && (
+            {gameState?.hostId === id && (
               <span className="host-badge">👑 Host</span>
             )}
           </div>
@@ -65,7 +65,7 @@ export default function Lobby() {
                   onChange={(e) => setPlaylistUrl(e.target.value)}
                 >
                   <option value="">– Select –</option>
-                  {gameState.playlists.map((p) => (
+                  {gameState?.playlists.map((p) => (
                     <option key={p.url} value={p.url}>
                       {p.name}
                     </option>
@@ -107,7 +107,7 @@ export default function Lobby() {
                 {manualMode ? '← Back to presets' : 'Enter URL manually'}
               </button>
             )}
-            {gameState.playlist && (
+            {gameState?.playlist && (
               <p className="success">
                 ✅ {gameState.playlist.tracks.length} songs loaded
               </p>
@@ -116,7 +116,7 @@ export default function Lobby() {
 
           <button
             className="btn-start"
-            disabled={!gameState.playlist || players.length < 1}
+            disabled={!gameState?.playlist || players.length < 1}
             onClick={startGame}
           >
             🎵 Start game

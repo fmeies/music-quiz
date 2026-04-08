@@ -1,4 +1,5 @@
-const { applyReveal, advanceTurn } = require('../gameLogic');
+import { applyReveal, advanceTurn } from '../gameLogic';
+import type { Room, Card, InternalPlayer, Phase } from '../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -8,9 +9,17 @@ function makeRoom({
   currentCard,
   playerOrder = [],
   currentTurnIndex = 0,
-  phase = 'placed',
+  phase = 'placed' as Phase,
   round = 1,
-} = {}) {
+}: {
+  players: Record<string, InternalPlayer>;
+  currentPlayerId: string;
+  currentCard: Card;
+  playerOrder?: string[];
+  currentTurnIndex?: number;
+  phase?: Phase;
+  round?: number;
+}): Room {
   return {
     players,
     currentPlayerId,
@@ -20,10 +29,16 @@ function makeRoom({
     phase,
     lastResult: null,
     round,
+    hostId: currentPlayerId,
+    playlist: null,
+    usedTracks: new Set(),
+    spotifyToken: null,
+    oauthState: null,
+    placedAt: null,
   };
 }
 
-function card(trackId, year) {
+function card(trackId: string, year: number): Card {
   return {
     trackId,
     title: `Song ${trackId}`,
@@ -33,7 +48,12 @@ function card(trackId, year) {
   };
 }
 
-function player(name, timeline = [], score = 0, challenged = false) {
+function player(
+  name: string,
+  timeline: Card[] = [],
+  score = 0,
+  challenged = false
+): InternalPlayer {
   return { name, timeline: timeline.map((c) => ({ ...c })), score, challenged };
 }
 
@@ -67,7 +87,7 @@ describe('applyReveal — correct placement', () => {
     });
     applyReveal(room);
     expect(room.players.p1.score).toBe(1);
-    expect(room.lastResult.correct).toBe(true);
+    expect(room.lastResult?.correct).toBe(true);
   });
 
   it('correct when placed at the beginning (no prev card)', () => {
@@ -105,7 +125,7 @@ describe('applyReveal — correct placement', () => {
     applyReveal(room);
     expect(room.players.p1.score).toBe(1);
     expect(room.players.p2.timeline).toHaveLength(1);
-    expect(room.lastResult.challengers).toEqual([]);
+    expect(room.lastResult?.challengers).toEqual([]);
   });
 
   it('correct placement — challenger with empty timeline loses no card', () => {
@@ -135,7 +155,7 @@ describe('applyReveal — wrong placement', () => {
     applyReveal(room);
     expect(room.players.p1.score).toBe(0);
     expect(room.players.p1.timeline).toHaveLength(1);
-    expect(room.lastResult.correct).toBe(false);
+    expect(room.lastResult?.correct).toBe(false);
   });
 
   it('challenger gets +1 score and receives the card on wrong placement', () => {
@@ -150,8 +170,7 @@ describe('applyReveal — wrong placement', () => {
     });
     applyReveal(room);
     expect(room.players.p2.score).toBe(1);
-    expect(room.lastResult.challengers).toEqual(['Bob']);
-    // Bob should now have the card inserted in sorted order
+    expect(room.lastResult?.challengers).toEqual(['Bob']);
     expect(room.players.p2.timeline.map((t) => t.year)).toEqual([1985, 1990]);
   });
 
@@ -201,7 +220,7 @@ describe('applyReveal — wrong placement', () => {
     applyReveal(room);
     expect(room.players.p2.score).toBe(1);
     expect(room.players.p3.score).toBe(1);
-    expect(room.lastResult.challengers).toHaveLength(2);
+    expect(room.lastResult?.challengers).toHaveLength(2);
   });
 
   it('non-challenging players are unaffected on wrong placement', () => {
@@ -239,8 +258,13 @@ describe('advanceTurn', () => {
       playerOrder: ['p1', 'p2', 'p3'],
       currentTurnIndex: 0,
       currentPlayerId: 'p1',
-      players: { p1: player('Alice'), p2: player('Bob'), p3: player('Carol') },
+      players: {
+        p1: player('Alice'),
+        p2: player('Bob'),
+        p3: player('Carol'),
+      },
       phase: 'reveal',
+      currentCard: card('t1', 2000),
     });
     const result = advanceTurn(room);
     expect(result).toBe(true);
@@ -256,6 +280,7 @@ describe('advanceTurn', () => {
       currentPlayerId: 'p2',
       players: { p1: player('Alice'), p2: player('Bob') },
       phase: 'reveal',
+      currentCard: card('t1', 2000),
     });
     advanceTurn(room);
     expect(room.currentPlayerId).toBe('p1');
@@ -269,6 +294,7 @@ describe('advanceTurn', () => {
       currentPlayerId: 'p1',
       players: { p1: player('Alice'), p3: player('Carol') }, // p2 disconnected
       phase: 'reveal',
+      currentCard: card('t1', 2000),
     });
     advanceTurn(room);
     expect(room.playerOrder).toEqual(['p1', 'p3']);
@@ -282,6 +308,7 @@ describe('advanceTurn', () => {
       currentPlayerId: 'p1',
       players: {}, // everyone disconnected
       phase: 'reveal',
+      currentCard: card('t1', 2000),
     });
     const result = advanceTurn(room);
     expect(result).toBe(false);
@@ -296,6 +323,7 @@ describe('advanceTurn', () => {
       players: { p1: player('Alice'), p2: player('Bob') },
       phase: 'reveal',
       round: 5,
+      currentCard: card('t1', 2000),
     });
     advanceTurn(room);
     expect(room.round).toBe(6);

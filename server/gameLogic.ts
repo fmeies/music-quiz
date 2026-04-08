@@ -1,8 +1,21 @@
-const crypto = require('crypto');
+import * as crypto from 'crypto';
+import type {
+  Room,
+  InternalPlayer,
+  Card,
+  Phase,
+  GameState,
+  PublicPlayer,
+  PublicTimelineCard,
+  MusicBrainzRecording,
+  RateLimitConfig,
+  RateLimitWindow,
+  LastResult,
+} from './types';
 
-const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-const RATE_LIMITS = {
+export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   createRoom: { windowMs: 10000, max: 3 },
   joinRoom: { windowMs: 10000, max: 5 },
   loadPlaylist: { windowMs: 15000, max: 3 },
@@ -11,7 +24,7 @@ const RATE_LIMITS = {
   nextTurn: { windowMs: 3000, max: 2 },
 };
 
-function generateRoomId() {
+export function generateRoomId(): string {
   const bytes = crypto.randomBytes(5);
   return Array.from(
     bytes,
@@ -19,17 +32,17 @@ function generateRoomId() {
   ).join('');
 }
 
-function generateId() {
+export function generateId(): string {
   return crypto.randomBytes(12).toString('hex');
 }
 
-function createRoom(hostId, hostName) {
+export function createRoom(hostId: string, hostName: string): Room {
   return {
     hostId,
     players: {
       [hostId]: { name: hostName, timeline: [], score: 0, challenged: false },
     },
-    phase: 'lobby',
+    phase: 'lobby' as Phase,
     currentCard: null,
     currentPlayerId: null,
     playerOrder: [],
@@ -44,33 +57,35 @@ function createRoom(hostId, hostName) {
   };
 }
 
-function roomPublicState(room) {
+export function roomPublicState(room: Room): GameState {
   const hideCurrentYear = room.phase === 'playing' || room.phase === 'placed';
   const currentTrackId = room.currentCard?.trackId;
+
   return {
     phase: room.phase,
     round: room.round,
     hostId: room.hostId,
     currentPlayerId: room.currentPlayerId,
     players: Object.fromEntries(
-      Object.entries(room.players).map(([id, p]) => [
+      Object.entries(room.players).map(([id, p]: [string, InternalPlayer]) => [
         id,
         {
           name: p.name,
           score: p.score,
           challenged: p.challenged,
           timeline: hideCurrentYear
-            ? p.timeline.map((c) =>
-                c.trackId === currentTrackId ? { trackId: c.trackId } : c
+            ? p.timeline.map(
+                (c: Card): PublicTimelineCard =>
+                  c.trackId === currentTrackId ? { trackId: c.trackId } : c
               )
             : p.timeline,
           timelineCount: p.timeline.length,
-        },
+        } satisfies PublicPlayer,
       ])
     ),
     currentCard: hideCurrentYear
       ? {
-          trackId: room.currentCard?.trackId,
+          trackId: room.currentCard?.trackId ?? '',
           title: room.currentCard?.title,
           artist: room.currentCard?.artist,
           albumArt: room.currentCard?.albumArt,
@@ -84,15 +99,18 @@ function roomPublicState(room) {
       .filter((k) => /^PLAYLIST_\d+_NAME$/.test(k))
       .sort()
       .flatMap((k) => {
-        const n = k.match(/^PLAYLIST_(\d+)_NAME$/)[1];
-        const url = process.env[`PLAYLIST_${n}_URL`];
-        return url ? [{ name: process.env[k], url }] : [];
+        const match = k.match(/^PLAYLIST_(\d+)_NAME$/);
+        if (!match) return [];
+        const url = process.env[`PLAYLIST_${match[1]}_URL`];
+        return url ? [{ name: process.env[k] as string, url }] : [];
       }),
   };
 }
 
-function earliestYearFromRecordings(recordings) {
-  let earliest = null;
+export function earliestYearFromRecordings(
+  recordings: MusicBrainzRecording[]
+): number | null {
+  let earliest: number | null = null;
   for (const rec of recordings) {
     for (const rg of rec['release-groups'] || []) {
       const y = rg['first-release-date']
@@ -108,17 +126,17 @@ function earliestYearFromRecordings(recordings) {
   return earliest;
 }
 
-function pickRandomTrack(room) {
-  const available = room.playlist.tracks.filter(
+export function pickRandomTrack(room: Room): Card | null {
+  const available = room.playlist!.tracks.filter(
     (t) => !room.usedTracks.has(t.trackId)
   );
   if (!available.length) return null;
   return available[crypto.randomInt(available.length)];
 }
 
-function makeRateLimiter() {
-  const windows = {};
-  return function isAllowed(event) {
+export function makeRateLimiter(): (event: string) => boolean {
+  const windows: Record<string, RateLimitWindow> = {};
+  return function isAllowed(event: string): boolean {
     const limit = RATE_LIMITS[event];
     if (!limit) return true;
     const now = Date.now();
@@ -134,13 +152,13 @@ function makeRateLimiter() {
 }
 
 // Pure scoring logic for triggerReveal — modifies room in place, returns true if active player existed.
-function applyReveal(room) {
-  const year = room.currentCard.year;
-  const activePlayer = room.players[room.currentPlayerId];
+export function applyReveal(room: Room): boolean {
+  const year = room.currentCard!.year;
+  const activePlayer = room.players[room.currentPlayerId!];
   if (!activePlayer) return false;
 
   const cardIdx = activePlayer.timeline.findIndex(
-    (c) => c.trackId === room.currentCard.trackId
+    (c) => c.trackId === room.currentCard!.trackId
   );
   const prev = activePlayer.timeline[cardIdx - 1];
   const next = activePlayer.timeline[cardIdx + 1];
@@ -148,7 +166,7 @@ function applyReveal(room) {
 
   if (correct) {
     activePlayer.score += 1;
-    Object.values(room.players).forEach((p) => {
+    Object.values(room.players).forEach((p: InternalPlayer) => {
       if (p.challenged && p.timeline.length > 0) {
         p.timeline.splice(Math.floor(Math.random() * p.timeline.length), 1);
       }
@@ -157,17 +175,17 @@ function applyReveal(room) {
       playerName: activePlayer.name,
       correct: true,
       challengers: [],
-    };
+    } satisfies LastResult;
   } else {
     activePlayer.timeline.splice(cardIdx, 1);
-    const challengers = [];
-    Object.values(room.players).forEach((p) => {
+    const challengers: string[] = [];
+    Object.values(room.players).forEach((p: InternalPlayer) => {
       if (p.challenged) {
         p.score += 1;
         challengers.push(p.name);
         const insertIdx = p.timeline.findIndex((c) => c.year > year);
         p.timeline.splice(insertIdx === -1 ? p.timeline.length : insertIdx, 0, {
-          ...room.currentCard,
+          ...room.currentCard!,
         });
       }
     });
@@ -175,7 +193,7 @@ function applyReveal(room) {
       playerName: activePlayer.name,
       correct: false,
       challengers,
-    };
+    } satisfies LastResult;
   }
 
   return true;
@@ -183,7 +201,7 @@ function applyReveal(room) {
 
 // Pure turn-rotation logic for triggerNextTurn — modifies room in place.
 // Returns true if game continues, false if gameover (no players or no tracks).
-function advanceTurn(room) {
+export function advanceTurn(room: Room): boolean {
   room.playerOrder = room.playerOrder.filter((id) => room.players[id]);
   if (room.playerOrder.length === 0) {
     room.phase = 'gameover';
@@ -194,17 +212,3 @@ function advanceTurn(room) {
   room.round += 1;
   return true;
 }
-
-module.exports = {
-  ROOM_CODE_CHARS,
-  RATE_LIMITS,
-  generateRoomId,
-  generateId,
-  createRoom,
-  roomPublicState,
-  earliestYearFromRecordings,
-  pickRandomTrack,
-  makeRateLimiter,
-  applyReveal,
-  advanceTurn,
-};

@@ -4,8 +4,8 @@ process.env.REDIRECT_URI = 'http://localhost/callback';
 process.env.APP_CODE = 'secret123';
 process.env.APP_URL = 'http://localhost';
 
-const request = require('supertest');
-const { app, server } = require('../index');
+import request from 'supertest';
+import { app, server } from '../index';
 
 afterAll(() => server.close());
 

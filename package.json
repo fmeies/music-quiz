@@ -8,8 +8,8 @@
     "build:client": "cd client && npm run build",
     "test": "cd server && npm test && cd ../client && npm test",
     "lint": "cd server && npm run lint && cd ../client && npm run lint",
-    "format:check": "prettier --check \"server/**/*.js\" \"client/src/**/*.{js,jsx}\"",
-    "format": "prettier --write \"server/**/*.js\" \"client/src/**/*.{js,jsx}\""
+    "format:check": "prettier --check \"server/**/*.{js,ts}\" \"client/src/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"server/**/*.{js,ts}\" \"client/src/**/*.{ts,tsx}\""
   },
   "devDependencies": {
     "prettier": "^3.4.2"

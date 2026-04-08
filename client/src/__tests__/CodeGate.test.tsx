@@ -15,7 +15,9 @@ describe('CodeGate', () => {
 
   it('disables the submit button when input is empty', () => {
     render(<CodeGate onVerified={() => {}} />);
-    const btn = screen.getByRole('button', { name: 'Continue' });
+    const btn = screen.getByRole('button', {
+      name: 'Continue',
+    }) as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
   });
 
@@ -23,13 +25,15 @@ describe('CodeGate', () => {
     render(<CodeGate onVerified={() => {}} />);
     const input = screen.getByPlaceholderText('Access code');
     fireEvent.change(input, { target: { value: 'mycode' } });
-    const btn = screen.getByRole('button', { name: 'Continue' });
+    const btn = screen.getByRole('button', {
+      name: 'Continue',
+    }) as HTMLButtonElement;
     expect(btn.disabled).toBe(false);
   });
 
   it('calls onVerified with the code when server returns ok:true', async () => {
     const onVerified = vi.fn();
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       json: async () => ({ ok: true }),
     });
 
@@ -43,7 +47,7 @@ describe('CodeGate', () => {
   });
 
   it('shows an error when server returns ok:false', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       json: async () => ({ ok: false }),
     });
 
@@ -57,7 +61,7 @@ describe('CodeGate', () => {
   });
 
   it('shows an error when fetch fails', async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
     render(<CodeGate onVerified={() => {}} />);
     fireEvent.change(screen.getByPlaceholderText('Access code'), {

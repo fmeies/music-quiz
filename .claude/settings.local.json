@@ -7,7 +7,10 @@
       "Bash(npm audit:*)",
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(node -e ':*)",
+      "Bash(npm test:*)",
+      "Bash(npx prettier:*)"
     ]
   }
 }
