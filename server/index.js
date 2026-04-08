@@ -196,6 +196,11 @@ function triggerReveal(roomId) {
 
   if (correct) {
     activePlayer.score += 1;
+    Object.values(room.players).forEach(p => {
+      if (p.challenged && p.timeline.length > 0) {
+        p.timeline.splice(Math.floor(Math.random() * p.timeline.length), 1);
+      }
+    });
     room.lastResult = { playerName: activePlayer.name, correct: true, challengers: [] };
   } else {
     activePlayer.timeline.splice(cardIdx, 1);
