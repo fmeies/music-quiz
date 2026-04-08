@@ -124,6 +124,56 @@ function makeRateLimiter() {
   };
 }
 
+// Pure scoring logic for triggerReveal — modifies room in place, returns true if active player existed.
+function applyReveal(room) {
+  const year = room.currentCard.year;
+  const activePlayer = room.players[room.currentPlayerId];
+  if (!activePlayer) return false;
+
+  const cardIdx = activePlayer.timeline.findIndex(c => c.trackId === room.currentCard.trackId);
+  const prev = activePlayer.timeline[cardIdx - 1];
+  const next = activePlayer.timeline[cardIdx + 1];
+  const correct = (!prev || prev.year <= year) && (!next || next.year >= year);
+
+  if (correct) {
+    activePlayer.score += 1;
+    Object.values(room.players).forEach(p => {
+      if (p.challenged && p.timeline.length > 0) {
+        p.timeline.splice(Math.floor(Math.random() * p.timeline.length), 1);
+      }
+    });
+    room.lastResult = { playerName: activePlayer.name, correct: true, challengers: [] };
+  } else {
+    activePlayer.timeline.splice(cardIdx, 1);
+    const challengers = [];
+    Object.values(room.players).forEach(p => {
+      if (p.challenged) {
+        p.score += 1;
+        challengers.push(p.name);
+        const insertIdx = p.timeline.findIndex(c => c.year > year);
+        p.timeline.splice(insertIdx === -1 ? p.timeline.length : insertIdx, 0, { ...room.currentCard });
+      }
+    });
+    room.lastResult = { playerName: activePlayer.name, correct: false, challengers };
+  }
+
+  return true;
+}
+
+// Pure turn-rotation logic for triggerNextTurn — modifies room in place.
+// Returns true if game continues, false if gameover (no players or no tracks).
+function advanceTurn(room) {
+  room.playerOrder = room.playerOrder.filter(id => room.players[id]);
+  if (room.playerOrder.length === 0) {
+    room.phase = 'gameover';
+    return false;
+  }
+  room.currentTurnIndex = (room.currentTurnIndex + 1) % room.playerOrder.length;
+  room.currentPlayerId = room.playerOrder[room.currentTurnIndex];
+  room.round += 1;
+  return true;
+}
+
 module.exports = {
   ROOM_CODE_CHARS,
   RATE_LIMITS,
@@ -134,4 +184,6 @@ module.exports = {
   earliestYearFromRecordings,
   pickRandomTrack,
   makeRateLimiter,
+  applyReveal,
+  advanceTurn,
 };
