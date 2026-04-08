@@ -35,7 +35,7 @@ export default function Lobby() {
             <span className="lobby-label">Spotify</span>
             {spotifyToken
               ? <p className="success">✅ Connected</p>
-              : <button className="btn-secondary" onClick={connectSpotify}>Connect Spotify</button>
+              : <button className="btn-connect-spotify" onClick={connectSpotify}>Connect Spotify</button>
             }
           </div>
 
