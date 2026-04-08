@@ -72,6 +72,7 @@ function roomPublicState(room) {
     playlist: room.playlist,
     lastResult: room.lastResult,
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
+    defaultPlaylistUrl: process.env.DEFAULT_PLAYLIST_URL || null,
   };
 }
 
