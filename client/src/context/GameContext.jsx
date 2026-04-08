@@ -13,12 +13,27 @@ export function GameProvider({ children }) {
   const [roomId, setRoomId] = useState(null);
   const [error, setError] = useState(null);
   const [spotifyToken, setSpotifyToken] = useState(null);
+  const playerIdRef = useRef(null);
 
   useEffect(() => {
     const socket = io(window.location.origin, { path: `${BASE}/socket.io` });
     socketRef.current = socket;
 
-    socket.on('connect', () => setConnected(true));
+    socket.on('connect', () => {
+      setConnected(true);
+      if (playerIdRef.current) return; // already in a session
+      const session = JSON.parse(localStorage.getItem('mqSession') || 'null');
+      if (!session) return;
+      socket.emit('reconnectPlayer', session, (res) => {
+        if (res.ok) {
+          playerIdRef.current = session.playerId;
+          setPlayerId(session.playerId);
+          setRoomId(session.roomId);
+        } else {
+          localStorage.removeItem('mqSession');
+        }
+      });
+    });
     socket.on('disconnect', () => setConnected(false));
     socket.on('gameState', setGameState);
     socket.on('error', (msg) => {
@@ -33,8 +48,10 @@ export function GameProvider({ children }) {
   const createRoom = (playerName) => new Promise((resolve, reject) => {
     socketRef.current.emit('createRoom', { playerName }, (res) => {
       if (res.error) return reject(res.error);
+      playerIdRef.current = res.playerId;
       setPlayerId(res.playerId);
       setRoomId(res.roomId);
+      localStorage.setItem('mqSession', JSON.stringify({ roomId: res.roomId, playerId: res.playerId }));
       resolve(res);
     });
   });
@@ -42,8 +59,10 @@ export function GameProvider({ children }) {
   const joinRoom = (roomId, playerName) => new Promise((resolve, reject) => {
     socketRef.current.emit('joinRoom', { roomId: roomId.toUpperCase(), playerName }, (res) => {
       if (res.error) return reject(res.error);
+      playerIdRef.current = res.playerId;
       setPlayerId(res.playerId);
       setRoomId(res.roomId);
+      localStorage.setItem('mqSession', JSON.stringify({ roomId: res.roomId, playerId: res.playerId }));
       resolve(res);
     });
   });
