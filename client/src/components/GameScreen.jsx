@@ -4,7 +4,7 @@ import NowPlaying from './NowPlaying';
 import Timeline from './Timeline';
 
 export default function GameScreen() {
-  const { gameState, playerId, isHost, isActivePlayer, challenge, nextTurn } = useGame();
+  const { gameState, playerId, roomId, isHost, isActivePlayer, challenge, nextTurn } = useGame();
   const [countdown, setCountdown] = useState(null);
 
   const phase = gameState?.phase;
@@ -34,7 +34,7 @@ export default function GameScreen() {
   return (
     <div className="game-screen">
       <div className="game-header">
-        <span className="round-info">Round {gameState.round}</span>
+        <span className="round-info">Round {gameState.round} · {roomId}</span>
 
         <span className={`phase-badge phase-${phase}`}>
           {phase === 'playing' && (isActivePlayer ? '🎵 Your turn!' : `🎵 ${activePlayer?.name}'s turn`)}
