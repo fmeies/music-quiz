@@ -2,7 +2,15 @@ import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 
 export default function Lobby() {
-  const { gameState, roomId, isHost, loadPlaylist, startGame, connectSpotify, spotifyToken } = useGame();
+  const {
+    gameState,
+    roomId,
+    isHost,
+    loadPlaylist,
+    startGame,
+    connectSpotify,
+    spotifyToken,
+  } = useGame();
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [manualMode, setManualMode] = useState(false);
 
@@ -14,7 +22,10 @@ export default function Lobby() {
       <div className="room-code">
         <span>Room code:</span>
         <strong>{roomId}</strong>
-        <button className="btn-copy" onClick={() => navigator.clipboard.writeText(roomId)}>
+        <button
+          className="btn-copy"
+          onClick={() => navigator.clipboard.writeText(roomId)}
+        >
           📋 Copy
         </button>
       </div>
@@ -24,7 +35,9 @@ export default function Lobby() {
         {players.map(([id, p]) => (
           <div key={id} className="player-chip">
             {p.name}
-            {gameState.hostId === id && <span className="host-badge">👑 Host</span>}
+            {gameState.hostId === id && (
+              <span className="host-badge">👑 Host</span>
+            )}
           </div>
         ))}
       </div>
@@ -33,10 +46,13 @@ export default function Lobby() {
         <div className="host-controls">
           <div className="lobby-section">
             <span className="lobby-label">Spotify</span>
-            {spotifyToken
-              ? <p className="success">✅ Connected</p>
-              : <button className="btn-connect-spotify" onClick={connectSpotify}>Connect Spotify</button>
-            }
+            {spotifyToken ? (
+              <p className="success">✅ Connected</p>
+            ) : (
+              <button className="btn-connect-spotify" onClick={connectSpotify}>
+                Connect Spotify
+              </button>
+            )}
           </div>
 
           <div className="lobby-section">
@@ -46,14 +62,20 @@ export default function Lobby() {
                 <select
                   className="playlist-select"
                   value={playlistUrl}
-                  onChange={e => setPlaylistUrl(e.target.value)}
+                  onChange={(e) => setPlaylistUrl(e.target.value)}
                 >
                   <option value="">– Select –</option>
-                  {gameState.playlists.map(p => (
-                    <option key={p.url} value={p.url}>{p.name}</option>
+                  {gameState.playlists.map((p) => (
+                    <option key={p.url} value={p.url}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
-                <button className="btn-primary" onClick={() => loadPlaylist(playlistUrl)} disabled={!playlistUrl}>
+                <button
+                  className="btn-primary"
+                  onClick={() => loadPlaylist(playlistUrl)}
+                  disabled={!playlistUrl}
+                >
                   Load
                 </button>
               </div>
@@ -63,20 +85,32 @@ export default function Lobby() {
                   type="text"
                   placeholder="https://open.spotify.com/playlist/..."
                   value={playlistUrl}
-                  onChange={e => setPlaylistUrl(e.target.value)}
+                  onChange={(e) => setPlaylistUrl(e.target.value)}
                 />
-                <button className="btn-primary" onClick={() => loadPlaylist(playlistUrl)} disabled={!playlistUrl}>
+                <button
+                  className="btn-primary"
+                  onClick={() => loadPlaylist(playlistUrl)}
+                  disabled={!playlistUrl}
+                >
                   Load
                 </button>
               </div>
             )}
             {hasPresets && (
-              <button className="btn-ghost" onClick={() => { setManualMode(m => !m); setPlaylistUrl(''); }}>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setManualMode((m) => !m);
+                  setPlaylistUrl('');
+                }}
+              >
                 {manualMode ? '← Back to presets' : 'Enter URL manually'}
               </button>
             )}
             {gameState.playlist && (
-              <p className="success">✅ {gameState.playlist.tracks.length} songs loaded</p>
+              <p className="success">
+                ✅ {gameState.playlist.tracks.length} songs loaded
+              </p>
             )}
           </div>
 
@@ -90,9 +124,7 @@ export default function Lobby() {
         </div>
       )}
 
-      {!isHost && (
-        <p className="waiting">⏳ Waiting for the host…</p>
-      )}
+      {!isHost && <p className="waiting">⏳ Waiting for the host…</p>}
     </div>
   );
 }

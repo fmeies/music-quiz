@@ -17,7 +17,7 @@ describe('generateRoomId', () => {
   it('only uses characters from ROOM_CODE_CHARS', () => {
     for (let i = 0; i < 20; i++) {
       const id = generateRoomId();
-      expect([...id].every(c => ROOM_CODE_CHARS.includes(c))).toBe(true);
+      expect([...id].every((c) => ROOM_CODE_CHARS.includes(c))).toBe(true);
     }
   });
 
@@ -80,8 +80,16 @@ describe('roomPublicState', () => {
   it('hides current card year in playing phase', () => {
     const room = baseRoom();
     room.phase = 'playing';
-    room.currentCard = { trackId: 't1', title: 'Song', artist: 'Band', year: 1995, albumArt: null };
-    room.players.p1.timeline = [{ trackId: 't1', title: 'Song', artist: 'Band', year: 1995 }];
+    room.currentCard = {
+      trackId: 't1',
+      title: 'Song',
+      artist: 'Band',
+      year: 1995,
+      albumArt: null,
+    };
+    room.players.p1.timeline = [
+      { trackId: 't1', title: 'Song', artist: 'Band', year: 1995 },
+    ];
     const state = roomPublicState(room);
     expect(state.currentCard.year).toBeUndefined();
     expect(state.currentCard.title).toBe('Song');
@@ -91,7 +99,13 @@ describe('roomPublicState', () => {
   it('hides current card year in placed phase', () => {
     const room = baseRoom();
     room.phase = 'placed';
-    room.currentCard = { trackId: 't1', title: 'Song', artist: 'Band', year: 1995, albumArt: null };
+    room.currentCard = {
+      trackId: 't1',
+      title: 'Song',
+      artist: 'Band',
+      year: 1995,
+      albumArt: null,
+    };
     const state = roomPublicState(room);
     expect(state.currentCard.year).toBeUndefined();
   });
@@ -99,7 +113,13 @@ describe('roomPublicState', () => {
   it('reveals year in reveal phase', () => {
     const room = baseRoom();
     room.phase = 'reveal';
-    room.currentCard = { trackId: 't1', title: 'Song', artist: 'Band', year: 1995, albumArt: null };
+    room.currentCard = {
+      trackId: 't1',
+      title: 'Song',
+      artist: 'Band',
+      year: 1995,
+      albumArt: null,
+    };
     const state = roomPublicState(room);
     expect(state.currentCard.year).toBe(1995);
   });
@@ -107,13 +127,24 @@ describe('roomPublicState', () => {
   it('does not strip year from other timeline cards', () => {
     const room = baseRoom();
     room.phase = 'playing';
-    room.currentCard = { trackId: 'current', title: 'New', artist: 'Band', year: 2000, albumArt: null };
+    room.currentCard = {
+      trackId: 'current',
+      title: 'New',
+      artist: 'Band',
+      year: 2000,
+      albumArt: null,
+    };
     room.players.p1.timeline = [
       { trackId: 'old', title: 'Old', artist: 'Band', year: 1980 },
       { trackId: 'current', title: 'New', artist: 'Band', year: 2000 },
     ];
     const state = roomPublicState(room);
-    expect(state.players.p1.timeline[0]).toEqual({ trackId: 'old', title: 'Old', artist: 'Band', year: 1980 });
+    expect(state.players.p1.timeline[0]).toEqual({
+      trackId: 'old',
+      title: 'Old',
+      artist: 'Band',
+      year: 1980,
+    });
     expect(state.players.p1.timeline[1]).toEqual({ trackId: 'current' });
   });
 
@@ -130,20 +161,24 @@ describe('earliestYearFromRecordings', () => {
   });
 
   it('extracts year from release-groups', () => {
-    const recordings = [{
-      score: 100,
-      'release-groups': [{ 'first-release-date': '1991-11-24' }],
-      releases: [],
-    }];
+    const recordings = [
+      {
+        score: 100,
+        'release-groups': [{ 'first-release-date': '1991-11-24' }],
+        releases: [],
+      },
+    ];
     expect(earliestYearFromRecordings(recordings)).toBe(1991);
   });
 
   it('extracts year from releases', () => {
-    const recordings = [{
-      score: 100,
-      'release-groups': [],
-      releases: [{ date: '2005-03-01' }],
-    }];
+    const recordings = [
+      {
+        score: 100,
+        'release-groups': [],
+        releases: [{ date: '2005-03-01' }],
+      },
+    ];
     expect(earliestYearFromRecordings(recordings)).toBe(2005);
   });
 
@@ -157,18 +192,22 @@ describe('earliestYearFromRecordings', () => {
   });
 
   it('ignores invalid years (below 1000)', () => {
-    const recordings = [{
-      'release-groups': [{ 'first-release-date': '999' }],
-      releases: [{ date: '1975' }],
-    }];
+    const recordings = [
+      {
+        'release-groups': [{ 'first-release-date': '999' }],
+        releases: [{ date: '1975' }],
+      },
+    ];
     expect(earliestYearFromRecordings(recordings)).toBe(1975);
   });
 
   it('handles missing date fields gracefully', () => {
-    const recordings = [{
-      'release-groups': [{ 'first-release-date': null }],
-      releases: [{ date: null }],
-    }];
+    const recordings = [
+      {
+        'release-groups': [{ 'first-release-date': null }],
+        releases: [{ date: null }],
+      },
+    ];
     expect(earliestYearFromRecordings(recordings)).toBeNull();
   });
 });
@@ -184,7 +223,9 @@ describe('pickRandomTrack', () => {
 
   it('returns only unused tracks', () => {
     const room = {
-      playlist: { tracks: [{ trackId: 'a' }, { trackId: 'b' }, { trackId: 'c' }] },
+      playlist: {
+        tracks: [{ trackId: 'a' }, { trackId: 'b' }, { trackId: 'c' }],
+      },
       usedTracks: new Set(['a', 'b']),
     };
     expect(pickRandomTrack(room)).toEqual({ trackId: 'c' });
@@ -223,7 +264,9 @@ describe('makeRateLimiter', () => {
 
   it('tracks limits per event independently', () => {
     const rl = makeRateLimiter();
-    rl('createRoom'); rl('createRoom'); rl('createRoom');
+    rl('createRoom');
+    rl('createRoom');
+    rl('createRoom');
     expect(rl('createRoom')).toBe(false);
     // joinRoom has max 5, should still be allowed
     expect(rl('joinRoom')).toBe(true);

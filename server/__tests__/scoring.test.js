@@ -2,16 +2,39 @@ const { applyReveal, advanceTurn } = require('../gameLogic');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeRoom({ players, currentPlayerId, currentCard, playerOrder = [], currentTurnIndex = 0, phase = 'placed', round = 1 } = {}) {
-  return { players, currentPlayerId, currentCard, playerOrder, currentTurnIndex, phase, lastResult: null, round };
+function makeRoom({
+  players,
+  currentPlayerId,
+  currentCard,
+  playerOrder = [],
+  currentTurnIndex = 0,
+  phase = 'placed',
+  round = 1,
+} = {}) {
+  return {
+    players,
+    currentPlayerId,
+    currentCard,
+    playerOrder,
+    currentTurnIndex,
+    phase,
+    lastResult: null,
+    round,
+  };
 }
 
 function card(trackId, year) {
-  return { trackId, title: `Song ${trackId}`, artist: 'Band', year, albumArt: null };
+  return {
+    trackId,
+    title: `Song ${trackId}`,
+    artist: 'Band',
+    year,
+    albumArt: null,
+  };
 }
 
 function player(name, timeline = [], score = 0, challenged = false) {
-  return { name, timeline: timeline.map(c => ({ ...c })), score, challenged };
+  return { name, timeline: timeline.map((c) => ({ ...c })), score, challenged };
 }
 
 // ─── applyReveal ─────────────────────────────────────────────────────────────
@@ -26,7 +49,11 @@ describe('applyReveal — correct placement', () => {
     });
     applyReveal(room);
     expect(room.players.p1.score).toBe(1);
-    expect(room.lastResult).toEqual({ playerName: 'Alice', correct: true, challengers: [] });
+    expect(room.lastResult).toEqual({
+      playerName: 'Alice',
+      correct: true,
+      challengers: [],
+    });
   });
 
   it('correct when card is placed between two cards with correct years', () => {
@@ -125,7 +152,7 @@ describe('applyReveal — wrong placement', () => {
     expect(room.players.p2.score).toBe(1);
     expect(room.lastResult.challengers).toEqual(['Bob']);
     // Bob should now have the card inserted in sorted order
-    expect(room.players.p2.timeline.map(t => t.year)).toEqual([1985, 1990]);
+    expect(room.players.p2.timeline.map((t) => t.year)).toEqual([1985, 1990]);
   });
 
   it('challenger card is inserted at correct sorted position', () => {
@@ -139,7 +166,9 @@ describe('applyReveal — wrong placement', () => {
       },
     });
     applyReveal(room);
-    expect(room.players.p2.timeline.map(t => t.year)).toEqual([1985, 1993, 2000]);
+    expect(room.players.p2.timeline.map((t) => t.year)).toEqual([
+      1985, 1993, 2000,
+    ]);
   });
 
   it('challenger card appended when it is the latest year', () => {
@@ -153,7 +182,9 @@ describe('applyReveal — wrong placement', () => {
       },
     });
     applyReveal(room);
-    expect(room.players.p2.timeline.map(t => t.year)).toEqual([1990, 2005, 2010]);
+    expect(room.players.p2.timeline.map((t) => t.year)).toEqual([
+      1990, 2005, 2010,
+    ]);
   });
 
   it('multiple challengers all receive the card and score', () => {

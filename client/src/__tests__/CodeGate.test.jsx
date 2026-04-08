@@ -34,7 +34,9 @@ describe('CodeGate', () => {
     });
 
     render(<CodeGate onVerified={onVerified} />);
-    fireEvent.change(screen.getByPlaceholderText('Access code'), { target: { value: 'secret' } });
+    fireEvent.change(screen.getByPlaceholderText('Access code'), {
+      target: { value: 'secret' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(onVerified).toHaveBeenCalledWith('secret'));
@@ -46,7 +48,9 @@ describe('CodeGate', () => {
     });
 
     render(<CodeGate onVerified={() => {}} />);
-    fireEvent.change(screen.getByPlaceholderText('Access code'), { target: { value: 'wrong' } });
+    fireEvent.change(screen.getByPlaceholderText('Access code'), {
+      target: { value: 'wrong' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(screen.getByText('Wrong code')).toBeDefined());
@@ -56,7 +60,9 @@ describe('CodeGate', () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
     render(<CodeGate onVerified={() => {}} />);
-    fireEvent.change(screen.getByPlaceholderText('Access code'), { target: { value: 'secret' } });
+    fireEvent.change(screen.getByPlaceholderText('Access code'), {
+      target: { value: 'secret' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(screen.getByText('Wrong code')).toBeDefined());

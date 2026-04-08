@@ -21,7 +21,7 @@ export default function NowPlaying() {
 
       const player = new window.Spotify.Player({
         name: 'Music Quiz',
-        getOAuthToken: cb => cb(spotifyToken),
+        getOAuthToken: (cb) => cb(spotifyToken),
         volume: 0.8,
       });
 
@@ -30,14 +30,17 @@ export default function NowPlaying() {
         // Transfer playback to this browser device
         await fetch('https://api.spotify.com/v1/me/player', {
           method: 'PUT',
-          headers: { Authorization: `Bearer ${spotifyToken}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${spotifyToken}`,
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({ device_ids: [device_id], play: false }),
         });
         setDeviceId(device_id);
         setSdkError(null);
       });
       player.addListener('not_ready', () => setDeviceId(null));
-      player.addListener('player_state_changed', state => {
+      player.addListener('player_state_changed', (state) => {
         if (!state) return;
         setPlaying(!state.paused);
       });
@@ -78,17 +81,29 @@ export default function NowPlaying() {
 
   // Auto-play when a new track starts
   useEffect(() => {
-    if (phase !== 'playing' || !isHost || !deviceId || !spotifyToken || !card) return;
+    if (phase !== 'playing' || !isHost || !deviceId || !spotifyToken || !card)
+      return;
     fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
       method: 'PUT',
-      headers: { Authorization: `Bearer ${spotifyToken}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${spotifyToken}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ uris: [`spotify:track:${card.trackId}`] }),
-    }).then(res => {
-      if (res.ok) setPlaying(true);
-      else res.json().catch(() => ({})).then(body =>
-        setSdkError(`Playback failed (${res.status}): ${body?.error?.message || ''}`)
-      );
-    }).catch(err => setSdkError(`Playback error: ${err.message}`));
+    })
+      .then((res) => {
+        if (res.ok) setPlaying(true);
+        else
+          res
+            .json()
+            .catch(() => ({}))
+            .then((body) =>
+              setSdkError(
+                `Playback failed (${res.status}): ${body?.error?.message || ''}`
+              )
+            );
+      })
+      .catch((err) => setSdkError(`Playback error: ${err.message}`));
   }, [card?.trackId]);
 
   // Pause when reveal starts (song keeps playing through the challenge phase)
@@ -104,15 +119,23 @@ export default function NowPlaying() {
     if (playing) {
       playerRef.current.pause();
     } else {
-      const res = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${spotifyToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uris: [`spotify:track:${card.trackId}`] }),
-      });
+      const res = await fetch(
+        `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${spotifyToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ uris: [`spotify:track:${card.trackId}`] }),
+        }
+      );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         console.error('Play API error:', res.status, body);
-        setSdkError(`Playback failed (${res.status}): ${body?.error?.message || ''}`);
+        setSdkError(
+          `Playback failed (${res.status}): ${body?.error?.message || ''}`
+        );
       }
     }
   };
@@ -132,28 +155,32 @@ export default function NowPlaying() {
               <span className="song-title">{card.title}</span>
               <span className="song-artist">{card.artist}</span>
               <span className="song-year reveal-year">{card.year}</span>
-              {phase === 'reveal' && result && (() => {
-                let isRight, label;
-                if (isActivePlayer) {
-                  isRight = result.correct;
-                  label = `${me?.name} ${isRight ? 'is right' : 'is wrong'}!`;
-                } else if (me?.challenged) {
-                  isRight = !result.correct;
-                  label = `${me?.name} ${isRight ? 'is right' : 'is wrong'}!`;
-                } else {
-                  isRight = result.correct;
-                  label = result.correct
-                    ? `${result.playerName} is right!`
-                    : result.challengers.length > 0
-                      ? `${result.challengers.join(', ')} ${result.challengers.length > 1 ? 'are' : 'is'} right!`
-                      : `${result.playerName} is wrong!`;
-                }
-                return (
-                  <span className={`result-label ${isRight ? 'result-right' : 'result-wrong'}`}>
-                    {label}
-                  </span>
-                );
-              })()}
+              {phase === 'reveal' &&
+                result &&
+                (() => {
+                  let isRight, label;
+                  if (isActivePlayer) {
+                    isRight = result.correct;
+                    label = `${me?.name} ${isRight ? 'is right' : 'is wrong'}!`;
+                  } else if (me?.challenged) {
+                    isRight = !result.correct;
+                    label = `${me?.name} ${isRight ? 'is right' : 'is wrong'}!`;
+                  } else {
+                    isRight = result.correct;
+                    label = result.correct
+                      ? `${result.playerName} is right!`
+                      : result.challengers.length > 0
+                        ? `${result.challengers.join(', ')} ${result.challengers.length > 1 ? 'are' : 'is'} right!`
+                        : `${result.playerName} is wrong!`;
+                  }
+                  return (
+                    <span
+                      className={`result-label ${isRight ? 'result-right' : 'result-wrong'}`}
+                    >
+                      {label}
+                    </span>
+                  );
+                })()}
             </>
           ) : (
             <>
@@ -164,16 +191,21 @@ export default function NowPlaying() {
         </div>
 
         <div className="player-controls">
-          {sdkError && <span className="hint" style={{color:'red'}}>❌ {sdkError}</span>}
-          {isHost && spotifyToken && !sdkError && (
-            deviceId ? (
+          {sdkError && (
+            <span className="hint" style={{ color: 'red' }}>
+              ❌ {sdkError}
+            </span>
+          )}
+          {isHost &&
+            spotifyToken &&
+            !sdkError &&
+            (deviceId ? (
               <button className="btn-play" onClick={togglePlay}>
                 {playing ? '⏸ Pause' : '▶ Play'}
               </button>
             ) : (
               <span className="hint">⏳ Connecting to Spotify…</span>
-            )
-          )}
+            ))}
           {!isHost && (phase === 'playing' || phase === 'placed') && (
             <span className="hint">The host is playing the song</span>
           )}

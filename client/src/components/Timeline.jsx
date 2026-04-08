@@ -5,11 +5,25 @@ function TimelineCard({ card }) {
   if (!card.title) {
     return (
       <div className="timeline-card">
-        <div style={{ width: 36, height: 36, borderRadius: 4, background: '#333', flexShrink: 0 }} />
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 4,
+            background: '#333',
+            flexShrink: 0,
+          }}
+        />
         <div className="card-info">
-          <span className="card-title" style={{ color: '#555' }}>???</span>
-          <span className="card-artist" style={{ color: '#555' }}>???</span>
-          <span className="card-year" style={{ color: '#555' }}>?</span>
+          <span className="card-title" style={{ color: '#555' }}>
+            ???
+          </span>
+          <span className="card-artist" style={{ color: '#555' }}>
+            ???
+          </span>
+          <span className="card-year" style={{ color: '#555' }}>
+            ?
+          </span>
         </div>
       </div>
     );
@@ -56,19 +70,21 @@ export default function Timeline({ playerId }) {
   };
 
   return (
-    <div className={`timeline-wrapper ${isMe ? 'mine' : ''} ${isActiveTimeline ? 'active-player' : ''}`}>
+    <div
+      className={`timeline-wrapper ${isMe ? 'mine' : ''} ${isActiveTimeline ? 'active-player' : ''}`}
+    >
       <div className="timeline-player-name">
         {player.name}
         {isMe && ' (You)'}
         {isActiveTimeline && <span className="turn-badge">🎵 active</span>}
         <span className="score-badge">⭐ {player.score}</span>
-        {player.challenged && phase === 'placed' && <span className="challenged-badge">✋</span>}
+        {player.challenged && phase === 'placed' && (
+          <span className="challenged-badge">✋</span>
+        )}
       </div>
 
       <div className="timeline">
-        {canPlace && (
-          <DropZone index={0} onClick={handleDrop} />
-        )}
+        {canPlace && <DropZone index={0} onClick={handleDrop} />}
 
         {timeline.length === 0 && (
           <div className="timeline-empty">
@@ -79,9 +95,7 @@ export default function Timeline({ playerId }) {
         {timeline.map((card, i) => (
           <React.Fragment key={card.trackId}>
             <TimelineCard card={card} />
-            {canPlace && (
-              <DropZone index={i + 1} onClick={handleDrop} />
-            )}
+            {canPlace && <DropZone index={i + 1} onClick={handleDrop} />}
           </React.Fragment>
         ))}
       </div>

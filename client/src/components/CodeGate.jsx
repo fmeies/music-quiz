@@ -12,7 +12,9 @@ export default function CodeGate({ onVerified }) {
     setLoading(true);
     setError(false);
     try {
-      const res = await fetch(`${BASE}/verify?code=${encodeURIComponent(code)}`);
+      const res = await fetch(
+        `${BASE}/verify?code=${encodeURIComponent(code)}`
+      );
       const { ok } = await res.json();
       if (ok) {
         onVerified(code);
@@ -34,11 +36,15 @@ export default function CodeGate({ onVerified }) {
             type="password"
             placeholder="Access code"
             value={code}
-            onChange={e => setCode(e.target.value)}
+            onChange={(e) => setCode(e.target.value)}
             autoFocus
           />
           {error && <p style={{ color: '#e05', marginTop: 8 }}>Wrong code</p>}
-          <button className="btn-primary" type="submit" disabled={loading || !code}>
+          <button
+            className="btn-primary"
+            type="submit"
+            disabled={loading || !code}
+          >
             {loading ? '…' : 'Continue'}
           </button>
         </form>

@@ -4,7 +4,15 @@ import NowPlaying from './NowPlaying';
 import Timeline from './Timeline';
 
 export default function GameScreen() {
-  const { gameState, playerId, roomId, isHost, isActivePlayer, challenge, nextTurn } = useGame();
+  const {
+    gameState,
+    playerId,
+    roomId,
+    isHost,
+    isActivePlayer,
+    challenge,
+    nextTurn,
+  } = useGame();
   const [countdown, setCountdown] = useState(null);
 
   const phase = gameState?.phase;
@@ -17,7 +25,7 @@ export default function GameScreen() {
       setCountdown(Math.ceil(remainingMs / 1000));
       if (remainingMs <= 0) return;
       const interval = setInterval(() => {
-        setCountdown(c => (c <= 1 ? (clearInterval(interval), 0) : c - 1));
+        setCountdown((c) => (c <= 1 ? (clearInterval(interval), 0) : c - 1));
       }, 1000);
       return () => clearInterval(interval);
     }
@@ -37,10 +45,15 @@ export default function GameScreen() {
   return (
     <div className="game-screen">
       <div className="game-header">
-        <span className="round-info">Round {gameState.round} · {roomId}</span>
+        <span className="round-info">
+          Round {gameState.round} · {roomId}
+        </span>
 
         <span className={`phase-badge phase-${phase}`}>
-          {phase === 'playing' && (isActivePlayer ? '🎵 Your turn!' : `🎵 ${activePlayer?.name}'s turn`)}
+          {phase === 'playing' &&
+            (isActivePlayer
+              ? '🎵 Your turn!'
+              : `🎵 ${activePlayer?.name}'s turn`)}
           {phase === 'placed' && '👀 Challenge phase'}
           {phase === 'reveal' && '🔍 Reveal'}
           {phase === 'gameover' && '🏆 Game over'}
@@ -51,13 +64,19 @@ export default function GameScreen() {
             <span className="countdown">{countdown}</span>
           )}
           {canChallenge && phase === 'placed' && countdown > 0 && (
-            <button className="btn-challenge" onClick={challenge}>✋ Challenge!</button>
+            <button className="btn-challenge" onClick={challenge}>
+              ✋ Challenge!
+            </button>
           )}
-          {!isActivePlayer && gameState.players[playerId]?.challenged && phase === 'placed' && (
-            <span className="challenged-badge">✅ Challenged</span>
-          )}
+          {!isActivePlayer &&
+            gameState.players[playerId]?.challenged &&
+            phase === 'placed' && (
+              <span className="challenged-badge">✅ Challenged</span>
+            )}
           {isHost && phase === 'reveal' && (
-            <button className="btn-next" onClick={nextTurn}>Next →</button>
+            <button className="btn-next" onClick={nextTurn}>
+              Next →
+            </button>
           )}
         </div>
       </div>
@@ -84,7 +103,9 @@ export default function GameScreen() {
               .sort(([, a], [, b]) => b.score - a.score)
               .map(([id, p], i) => (
                 <div key={id} className="final-score-row">
-                  <span className="rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
+                  <span className="rank">
+                    {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                  </span>
                   <span className="pname">{p.name}</span>
                   <span className="pscore">{p.score} pts</span>
                 </div>

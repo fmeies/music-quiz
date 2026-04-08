@@ -13,7 +13,7 @@ export default function JoinScreen() {
 
   useEffect(() => {
     fetch(`${BASE}/rooms/single`)
-      .then(r => r.json())
+      .then((r) => r.json())
       .then(({ roomId }) => {
         if (roomId) {
           setCode(roomId);
@@ -25,15 +25,21 @@ export default function JoinScreen() {
 
   const handleCreate = async () => {
     if (!name.trim()) return setErr('Please enter your name');
-    try { await createRoom(name.trim()); }
-    catch (e) { setErr(e); }
+    try {
+      await createRoom(name.trim());
+    } catch (e) {
+      setErr(e);
+    }
   };
 
   const handleJoin = async () => {
     if (!name.trim()) return setErr('Please enter your name');
     if (!code.trim()) return setErr('Please enter a room code');
-    try { await joinRoom(code.trim(), name.trim()); }
-    catch (e) { setErr(e); }
+    try {
+      await joinRoom(code.trim(), name.trim());
+    } catch (e) {
+      setErr(e);
+    }
   };
 
   return (
@@ -61,8 +67,11 @@ export default function JoinScreen() {
               type="text"
               placeholder="Your name"
               value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (mode === 'create' ? handleCreate() : handleJoin())}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === 'Enter' &&
+                (mode === 'create' ? handleCreate() : handleJoin())
+              }
               autoFocus
             />
             {mode === 'join' && (
@@ -70,14 +79,20 @@ export default function JoinScreen() {
                 type="text"
                 placeholder="Room code (e.g. ABC12)"
                 value={code}
-                onChange={e => setCode(e.target.value.toUpperCase())}
-                onKeyDown={e => e.key === 'Enter' && handleJoin()}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
                 maxLength={5}
               />
             )}
             {err && <p className="error">{err}</p>}
             <div className="form-buttons">
-              <button className="btn-ghost" onClick={() => { setMode(null); setErr(''); }}>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setMode(null);
+                  setErr('');
+                }}
+              >
                 ← Back
               </button>
               <button

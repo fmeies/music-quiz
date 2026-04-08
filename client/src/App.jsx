@@ -15,7 +15,11 @@ function AppInner() {
         <div className="connecting-banner">⏳ Connecting to server…</div>
       )}
       {error && (
-        <div className="error-toast" onClick={clearError} style={{ cursor: 'pointer' }}>
+        <div
+          className="error-toast"
+          onClick={clearError}
+          style={{ cursor: 'pointer' }}
+        >
           ❌ {error} <span style={{ marginLeft: 8, opacity: 0.7 }}>✕</span>
         </div>
       )}
@@ -27,7 +31,7 @@ function AppInner() {
   );
 }
 
-const lsKey = k => `${import.meta.env.BASE_URL}${k}`;
+const lsKey = (k) => `${import.meta.env.BASE_URL}${k}`;
 
 export default function App() {
   const [verified, setVerified] = useState(() => {
@@ -35,7 +39,15 @@ export default function App() {
     return !!localStorage.getItem(lsKey('mqCode'));
   });
 
-  if (!verified) return <CodeGate onVerified={(code) => { localStorage.setItem(lsKey('mqCode'), code); setVerified(true); }} />;
+  if (!verified)
+    return (
+      <CodeGate
+        onVerified={(code) => {
+          localStorage.setItem(lsKey('mqCode'), code);
+          setVerified(true);
+        }}
+      />
+    );
 
   return (
     <GameProvider>
