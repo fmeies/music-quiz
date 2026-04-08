@@ -18,6 +18,18 @@ app.use(express.json());
 
 const rooms = {}; // roomId → gameState
 const revealTimers = {}; // roomId → timeout
+const inactivityTimers = {}; // roomId → timeout
+
+const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
+
+function resetInactivityTimer(roomId) {
+  if (inactivityTimers[roomId]) clearTimeout(inactivityTimers[roomId]);
+  inactivityTimers[roomId] = setTimeout(() => {
+    delete rooms[roomId];
+    delete inactivityTimers[roomId];
+    console.log(`Room ${roomId} removed after 60 min inactivity`);
+  }, INACTIVITY_MS);
+}
 
 function createRoom(hostId, hostName) {
   return {
@@ -282,20 +294,31 @@ io.on('connection', (socket) => {
     socket.data.playerId = socket.id;
     console.log(`Room ${roomId} created by ${playerName}`);
     cb({ roomId, playerId: socket.id });
+    resetInactivityTimer(roomId);
     io.to(roomId).emit('gameState', roomPublicState(rooms[roomId]));
   });
 
   socket.on('joinRoom', ({ roomId, playerName }, cb) => {
     const room = rooms[roomId];
     if (!room) return cb({ error: 'Room not found' });
-    if (room.phase !== 'lobby') return cb({ error: 'Game already in progress' });
 
     room.players[socket.id] = { name: playerName, timeline: [], score: 0, challenged: false };
+
+    if (room.phase !== 'lobby') {
+      const starter = pickRandomTrack(room);
+      if (starter) {
+        room.players[socket.id].timeline.push(starter);
+        room.usedTracks.push(starter.trackId);
+      }
+      room.playerOrder.push(socket.id);
+    }
+
     socket.join(roomId);
     socket.data.roomId = roomId;
     socket.data.playerId = socket.id;
     console.log(`${playerName} joined room ${roomId}`);
     cb({ roomId, playerId: socket.id });
+    resetInactivityTimer(roomId);
     io.to(roomId).emit('gameState', roomPublicState(room));
   });
 
@@ -339,6 +362,7 @@ io.on('connection', (socket) => {
 
     if (!startTurn(room)) return socket.emit('error', 'No tracks available');
 
+    resetInactivityTimer(roomId);
     io.to(roomId).emit('gameState', roomPublicState(room));
   });
 
@@ -362,6 +386,7 @@ io.on('connection', (socket) => {
     const timeout = parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10') * 1000;
     revealTimers[roomId] = setTimeout(() => triggerReveal(roomId), timeout);
 
+    resetInactivityTimer(roomId);
     io.to(roomId).emit('gameState', roomPublicState(room));
   });
 
@@ -385,6 +410,7 @@ io.on('connection', (socket) => {
   socket.on('nextTurn', ({ roomId }) => {
     const room = rooms[roomId];
     if (!room || room.hostId !== socket.id || room.phase !== 'reveal') return;
+    resetInactivityTimer(roomId);
     triggerNextTurn(roomId);
   });
 
