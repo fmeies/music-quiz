@@ -91,25 +91,52 @@ async function getSpotifyToken() {
   return res.data.access_token;
 }
 
-async function getMusicBrainzYear(isrc) {
-  try {
-    const res = await axios.get(
-      `https://musicbrainz.org/ws/2/isrc/${isrc}?fmt=json&inc=releases`,
-      { headers: { 'User-Agent': 'MusicQuiz/1.0 (music-quiz-party-game)' } }
-    );
-    let earliest = null;
-    for (const rec of (res.data.recordings || [])) {
-      for (const release of (rec.releases || [])) {
-        const y = release.date ? parseInt(release.date) : NaN;
-        if (!isNaN(y) && y > 1000 && (!earliest || y < earliest)) earliest = y;
-      }
+function earliestYearFromRecordings(recordings) {
+  let earliest = null;
+  for (const rec of recordings) {
+    for (const rg of (rec['release-groups'] || [])) {
+      const y = rg['first-release-date'] ? parseInt(rg['first-release-date']) : NaN;
+      if (!isNaN(y) && y > 1000 && (!earliest || y < earliest)) earliest = y;
     }
-    console.log(`[MusicBrainz] ISRC ${isrc} → ${earliest ?? 'no match'}`);
-    return earliest;
-  } catch (e) {
-    console.warn(`[MusicBrainz] ISRC ${isrc} failed:`, e.message);
-    return null;
+    for (const release of (rec.releases || [])) {
+      const y = release.date ? parseInt(release.date) : NaN;
+      if (!isNaN(y) && y > 1000 && (!earliest || y < earliest)) earliest = y;
+    }
   }
+  return earliest;
+}
+
+async function getMusicBrainzYear(isrc, title, artist) {
+  const headers = { 'User-Agent': 'MusicQuiz/1.0 (music-quiz-party-game)' };
+
+  if (isrc) {
+    try {
+      const res = await axios.get(
+        `https://musicbrainz.org/ws/2/isrc/${isrc}?fmt=json&inc=release-groups`,
+        { headers }
+      );
+      const year = earliestYearFromRecordings(res.data.recordings || []);
+      if (year) return { year, via: `ISRC ${isrc}` };
+    } catch (e) {
+      // ISRC not found or request failed, fall through to search
+    }
+  }
+
+  // Fallback: search by title + primary artist
+  try {
+    const primaryArtist = artist.split(',')[0].trim();
+    const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
+    const res = await axios.get(
+      `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=5`,
+      { headers }
+    );
+    const year = earliestYearFromRecordings(res.data.recordings || []);
+    if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
+  } catch (e) {
+    // search failed
+  }
+
+  return null;
 }
 
 async function getPlaylistTracks(playlistId, token) {
@@ -195,12 +222,16 @@ function triggerReveal(roomId) {
   io.to(roomId).emit('gameState', roomPublicState(room));
 }
 
-async function enrichCurrentCardYear(room, trackId, isrc) {
-  const mbYear = await getMusicBrainzYear(isrc);
-  if (mbYear && room.currentCard?.trackId === trackId) {
-    room.currentCard.year = mbYear;
-    const playlistTrack = room.playlist?.tracks.find(t => t.trackId === trackId);
-    if (playlistTrack) playlistTrack.year = mbYear;
+async function enrichCurrentCardYear(room, track) {
+  const result = await getMusicBrainzYear(track.isrc, track.title, track.artist);
+  const spotifyYear = track.year;
+  if (result && room.currentCard?.trackId === track.trackId) {
+    room.currentCard.year = result.year;
+    const playlistTrack = room.playlist?.tracks.find(t => t.trackId === track.trackId);
+    if (playlistTrack) playlistTrack.year = result.year;
+    console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${result.year} (via ${result.via})`);
+  } else {
+    console.log(`[Year] "${track.title}" – Spotify: ${spotifyYear} (MusicBrainz: kein Treffer)`);
   }
 }
 
@@ -211,7 +242,7 @@ function startTurn(room) {
   room.currentCard = { ...track };
   room.usedTracks.push(track.trackId);
   Object.values(room.players).forEach(p => { p.challenged = false; });
-  if (track.isrc) enrichCurrentCardYear(room, track.trackId, track.isrc); // fire & forget
+  enrichCurrentCardYear(room, track); // fire & forget
   return true;
 }
 
