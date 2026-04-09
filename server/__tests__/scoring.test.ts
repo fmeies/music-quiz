@@ -39,7 +39,7 @@ function makeRoom({
     settings: {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
-      maxRounds: 10,
+      maxCards: 10,
     },
     gameoverReason: null,
   };
@@ -340,34 +340,36 @@ describe('advanceTurn', () => {
 // ─── checkGameover ────────────────────────────────────────────────────────────
 
 describe('checkGameover', () => {
-  function roundRoom(round: number, maxRounds: number | null) {
+  function cardRoom(timelineLength: number, maxCards: number | null) {
+    const timeline = Array.from({ length: timelineLength }, (_, i) =>
+      card(`t${i}`, 2000 + i)
+    );
     const room = makeRoom({
-      players: { p1: player('Alice') },
+      players: { p1: player('Alice', timeline) },
       currentPlayerId: 'p1',
-      currentCard: card('t1', 2000),
-      round,
+      currentCard: card('tx', 2000),
     });
     room.settings = {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
-      maxRounds,
+      maxCards,
     };
     return room;
   }
 
-  it('returns null when maxRounds is null (unlimited)', () => {
-    expect(checkGameover(roundRoom(100, null))).toBeNull();
+  it('returns null when maxCards is null (unlimited)', () => {
+    expect(checkGameover(cardRoom(100, null))).toBeNull();
   });
 
-  it('returns rounds when round exceeds maxRounds', () => {
-    expect(checkGameover(roundRoom(11, 10))).toBe('rounds');
+  it('returns cards when a player reaches the target', () => {
+    expect(checkGameover(cardRoom(10, 10))).toBe('cards');
   });
 
-  it('returns null when round equals maxRounds (turn not over yet)', () => {
-    expect(checkGameover(roundRoom(10, 10))).toBeNull();
+  it('returns cards when a player exceeds the target', () => {
+    expect(checkGameover(cardRoom(11, 10))).toBe('cards');
   });
 
-  it('returns null when round is below maxRounds', () => {
-    expect(checkGameover(roundRoom(5, 10))).toBeNull();
+  it('returns null when no player has reached the target yet', () => {
+    expect(checkGameover(cardRoom(9, 10))).toBeNull();
   });
 });

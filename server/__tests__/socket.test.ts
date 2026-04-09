@@ -178,7 +178,7 @@ describe('Socket — updateSettings', () => {
     const settings: RoomSettings = {
       revealTimeoutSeconds: 25,
       autoAdvanceSeconds: null,
-      maxRounds: 10,
+      maxCards: 10,
     };
     sock.emit('updateSettings', { roomId, settings });
     const state = await updated;
@@ -194,7 +194,7 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: 999,
         autoAdvanceSeconds: null,
-        maxRounds: 10,
+        maxCards: 10,
       },
     });
     const state = await updated;
@@ -210,7 +210,7 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: -5,
         autoAdvanceSeconds: null,
-        maxRounds: 10,
+        maxCards: 10,
       },
     });
     const state = await updated;
@@ -226,7 +226,7 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: 10,
         autoAdvanceSeconds: 7,
-        maxRounds: 10,
+        maxCards: 10,
       },
     });
     const state = await updated;
@@ -234,7 +234,7 @@ describe('Socket — updateSettings', () => {
     sock.disconnect();
   });
 
-  it('allows maxRounds: null (unlimited)', async () => {
+  it('allows maxCards: null (unlimited)', async () => {
     const { sock, roomId } = await createRoomAsHost();
     const updated = nextEvent<GameState>(sock, 'gameState');
     sock.emit('updateSettings', {
@@ -242,11 +242,11 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: 10,
         autoAdvanceSeconds: null,
-        maxRounds: null,
+        maxCards: null,
       },
     });
     const state = await updated;
-    expect(state.settings.maxRounds).toBeNull();
+    expect(state.settings.maxCards).toBeNull();
     sock.disconnect();
   });
 
@@ -271,7 +271,7 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: 60,
         autoAdvanceSeconds: null,
-        maxRounds: null,
+        maxCards: null,
       },
     });
 

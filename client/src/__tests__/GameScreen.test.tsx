@@ -49,7 +49,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     settings: {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
-      maxRounds: 10,
+      maxCards: 10,
     },
     gameoverReason: null,
     playlists: [],
@@ -316,7 +316,7 @@ describe('GameScreen — challenge countdown', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: null,
-            maxRounds: 10,
+            maxCards: 10,
           },
         }),
       })
@@ -334,7 +334,7 @@ describe('GameScreen — challenge countdown', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: 5,
-            maxRounds: 10,
+            maxCards: 10,
           },
         }),
       })
@@ -352,7 +352,7 @@ describe('GameScreen — challenge countdown', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: null,
-            maxRounds: 10,
+            maxCards: 10,
           },
         }),
       })
@@ -387,7 +387,7 @@ describe('GameScreen — countdown ticking', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: null,
-            maxRounds: 10,
+            maxCards: 10,
           },
         }),
       })
@@ -442,17 +442,17 @@ describe('GameScreen — gameover', () => {
         isHost: true,
         gameState: makeGameState({
           phase: 'gameover',
-          gameoverReason: 'rounds',
+          gameoverReason: 'cards',
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: null,
-            maxRounds: 10,
+            maxCards: 10,
           },
         }),
       })
     );
     render(<GameScreen />);
-    expect(screen.getByText('10 rounds completed')).toBeDefined();
+    expect(screen.getByText('A player reached 10 cards')).toBeDefined();
   });
 
   it('shows all songs played reason when gameoverReason is no_tracks', () => {
@@ -476,7 +476,7 @@ describe('GameScreen — gameover', () => {
         continueGame,
         gameState: makeGameState({
           phase: 'gameover',
-          gameoverReason: 'rounds',
+          gameoverReason: 'cards',
         }),
       })
     );
@@ -493,7 +493,7 @@ describe('GameScreen — gameover', () => {
         isHost: false,
         gameState: makeGameState({
           phase: 'gameover',
-          gameoverReason: 'rounds',
+          gameoverReason: 'cards',
         }),
       })
     );

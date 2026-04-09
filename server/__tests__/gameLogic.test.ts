@@ -72,7 +72,7 @@ describe('roomPublicState', () => {
     settings: {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
-      maxRounds: 10,
+      maxCards: 10,
     },
     gameoverReason: null,
     players: {

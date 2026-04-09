@@ -85,33 +85,33 @@ export default function OptionsMenu() {
             </div>
 
             <div className="option-row">
-              <label htmlFor="opt-rounds">Round limit</label>
+              <label htmlFor="opt-cards">Card target</label>
               <div className="option-control">
                 <input
-                  id="opt-rounds"
+                  id="opt-cards"
                   type="checkbox"
-                  checked={s.maxRounds !== null}
+                  checked={s.maxCards !== null}
                   onChange={(e) =>
-                    set({ maxRounds: e.target.checked ? 10 : null })
+                    set({ maxCards: e.target.checked ? 10 : null })
                   }
                 />
-                {s.maxRounds !== null && (
+                {s.maxCards !== null && (
                   <>
                     <input
                       type="number"
-                      min={1}
+                      min={2}
                       max={999}
-                      value={s.maxRounds}
+                      value={s.maxCards}
                       onChange={(e) =>
                         set({
-                          maxRounds: Math.min(
+                          maxCards: Math.min(
                             999,
-                            Math.max(1, parseInt(e.target.value) || 10)
+                            Math.max(2, parseInt(e.target.value) || 10)
                           ),
                         })
                       }
                     />
-                    <span>rounds</span>
+                    <span>cards</span>
                   </>
                 )}
               </div>

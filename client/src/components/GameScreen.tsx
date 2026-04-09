@@ -142,9 +142,9 @@ export default function GameScreen() {
       {phase === 'gameover' && (
         <div className="gameover-overlay">
           <h2>🏆 Game over!</h2>
-          {gameState.gameoverReason === 'rounds' && (
+          {gameState.gameoverReason === 'cards' && (
             <p className="gameover-reason">
-              {gameState.settings.maxRounds} rounds completed
+              A player reached {gameState.settings.maxCards} cards
             </p>
           )}
           {gameState.gameoverReason === 'no_tracks' && (
@@ -163,7 +163,7 @@ export default function GameScreen() {
                 </div>
               ))}
           </div>
-          {isHost && gameState.gameoverReason === 'rounds' && (
+          {isHost && gameState.gameoverReason === 'cards' && (
             <button className="btn-continue" onClick={continueGame}>
               Continue playing →
             </button>

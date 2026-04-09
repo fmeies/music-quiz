@@ -12,7 +12,7 @@ function makeSettings(overrides: Partial<RoomSettings> = {}): RoomSettings {
   return {
     revealTimeoutSeconds: 10,
     autoAdvanceSeconds: null,
-    maxRounds: 10,
+    maxCards: 10,
     ...overrides,
   };
 }
@@ -160,11 +160,11 @@ describe('OptionsMenu — current values', () => {
     expect(checkbox.checked).toBe(true);
   });
 
-  it('round limit checkbox is checked when maxRounds is set', () => {
+  it('round limit checkbox is checked when maxCards is set', () => {
     vi.mocked(useGame).mockReturnValue(makeContext());
     render(<OptionsMenu />);
     fireEvent.click(screen.getByTitle('Options'));
-    const checkbox = screen.getByLabelText('Round limit') as HTMLInputElement;
+    const checkbox = screen.getByLabelText('Card target') as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
   });
 
@@ -229,32 +229,32 @@ describe('OptionsMenu — interactions', () => {
     );
   });
 
-  it('calls updateSettings with maxRounds: 10 when round limit is enabled', () => {
+  it('calls updateSettings with maxCards: 10 when round limit is enabled', () => {
     const updateSettings = vi.fn();
     vi.mocked(useGame).mockReturnValue(
       makeContext({
         updateSettings,
         gameState: makeGameState({
-          settings: makeSettings({ maxRounds: null }),
+          settings: makeSettings({ maxCards: null }),
         }),
       })
     );
     render(<OptionsMenu />);
     fireEvent.click(screen.getByTitle('Options'));
-    fireEvent.click(screen.getByLabelText('Round limit'));
+    fireEvent.click(screen.getByLabelText('Card target'));
     expect(updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ maxRounds: 10 })
+      expect.objectContaining({ maxCards: 10 })
     );
   });
 
-  it('calls updateSettings with maxRounds: null when round limit is disabled', () => {
+  it('calls updateSettings with maxCards: null when round limit is disabled', () => {
     const updateSettings = vi.fn();
     vi.mocked(useGame).mockReturnValue(makeContext({ updateSettings }));
     render(<OptionsMenu />);
     fireEvent.click(screen.getByTitle('Options'));
-    fireEvent.click(screen.getByLabelText('Round limit'));
+    fireEvent.click(screen.getByLabelText('Card target'));
     expect(updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ maxRounds: null })
+      expect.objectContaining({ maxCards: null })
     );
   });
 });

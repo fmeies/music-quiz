@@ -73,7 +73,7 @@ const baseGameState: GameState = {
   settings: {
     revealTimeoutSeconds: 10,
     autoAdvanceSeconds: null,
-    maxRounds: 10,
+    maxCards: 10,
   },
   gameoverReason: null,
   playlists: [],

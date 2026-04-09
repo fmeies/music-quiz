@@ -42,7 +42,7 @@ export function defaultSettings(): RoomSettings {
   return {
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
     autoAdvanceSeconds: null,
-    maxRounds: 10,
+    maxCards: 10,
   };
 }
 
@@ -219,15 +219,17 @@ export function applyReveal(room: Room): boolean {
   return true;
 }
 
-// Returns the gameover reason if the round limit has been reached, null otherwise.
+// Returns the gameover reason if any player has reached the card target, null otherwise.
 export function checkGameover(
-  room: Pick<Room, 'round' | 'settings'>
+  room: Pick<Room, 'players' | 'settings'>
 ): GameoverReason | null {
   if (
-    room.settings.maxRounds !== null &&
-    room.round > room.settings.maxRounds
+    room.settings.maxCards !== null &&
+    Object.values(room.players).some(
+      (p) => p.timeline.length >= room.settings.maxCards!
+    )
   ) {
-    return 'rounds';
+    return 'cards';
   }
   return null;
 }

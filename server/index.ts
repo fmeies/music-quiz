@@ -119,14 +119,6 @@ function triggerNextTurn(roomId: string): void {
     return;
   }
 
-  const gameoverReason = checkGameover(room);
-  if (gameoverReason) {
-    room.phase = 'gameover';
-    room.gameoverReason = gameoverReason;
-    io.to(roomId).emit('gameState', roomPublicState(room));
-    return;
-  }
-
   if (!startTurn(room, roomId)) {
     room.phase = 'gameover';
     room.gameoverReason = 'no_tracks';
@@ -145,6 +137,14 @@ function triggerReveal(roomId: string): void {
   room.phase = 'reveal';
   room.revealedAt = Date.now();
   applyReveal(room);
+
+  const gameoverReason = checkGameover(room);
+  if (gameoverReason) {
+    room.phase = 'gameover';
+    room.gameoverReason = gameoverReason;
+    io.to(roomId).emit('gameState', roomPublicState(room));
+    return;
+  }
 
   if (room.settings.autoAdvanceSeconds !== null) {
     autoAdvanceTimers[roomId] = setTimeout(
@@ -494,7 +494,7 @@ io.on('connection', (socket: Socket) => {
       room.phase !== 'gameover'
     )
       return;
-    room.settings.maxRounds = null;
+    room.settings.maxCards = null;
     room.gameoverReason = null;
     room.phase = 'reveal';
     clearAutoAdvanceTimer(roomId);
@@ -518,14 +518,14 @@ io.on('connection', (socket: Socket) => {
               120,
               Math.max(1, Math.round(Number(settings.autoAdvanceSeconds)) || 5)
             );
-      const maxRounds =
-        settings.maxRounds === null
+      const maxCards =
+        settings.maxCards === null
           ? null
           : Math.min(
               999,
-              Math.max(1, Math.round(Number(settings.maxRounds)) || 10)
+              Math.max(2, Math.round(Number(settings.maxCards)) || 10)
             );
-      room.settings = { revealTimeoutSeconds, autoAdvanceSeconds, maxRounds };
+      room.settings = { revealTimeoutSeconds, autoAdvanceSeconds, maxCards };
       globalDefaultSettings = { ...room.settings };
       io.to(roomId).emit('gameState', roomPublicState(room));
     }

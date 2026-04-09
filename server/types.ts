@@ -3,10 +3,10 @@ export type Phase = 'lobby' | 'playing' | 'placed' | 'reveal' | 'gameover';
 export interface RoomSettings {
   revealTimeoutSeconds: number;
   autoAdvanceSeconds: number | null;
-  maxRounds: number | null;
+  maxCards: number | null;
 }
 
-export type GameoverReason = 'rounds' | 'no_tracks' | 'no_players' | null;
+export type GameoverReason = 'cards' | 'no_tracks' | 'no_players' | null;
 
 export interface Card {
   trackId: string;
