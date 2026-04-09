@@ -256,7 +256,7 @@ describe('GameScreen — challenge countdown', () => {
         gameState: makeGameState({
           phase: 'reveal',
           revealedAt: Date.now(),
-          settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: 5 },
+          settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: 5, maxRounds: 10 },
         }),
       })
     );
