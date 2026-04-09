@@ -3,8 +3,6 @@ import * as crypto from 'crypto';
 import express from 'express';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
-import cors from 'cors';
-import axios from 'axios';
 import {
   generateRoomId,
   generateId,
@@ -49,7 +47,6 @@ const io = new Server(server, {
   cors: { origin: process.env.APP_URL || '*', methods: ['GET', 'POST'] },
 });
 
-app.use(cors());
 app.use(express.json());
 
 // ─── In-Memory Game State ────────────────────────────────────────────────────
@@ -198,21 +195,21 @@ app.get('/auth/spotify/callback', async (req, res) => {
     const creds = Buffer.from(
       `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
     ).toString('base64');
-    const tokenRes = await axios.post(
-      'https://accounts.spotify.com/api/token',
-      new URLSearchParams({
+    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${creds}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
         redirect_uri: REDIRECT_URI!,
       }),
-      {
-        headers: {
-          Authorization: `Basic ${creds}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
-    const accessToken = tokenRes.data.access_token as string;
+    });
+    if (!tokenRes.ok) throw new Error(`Spotify auth error: ${tokenRes.status}`);
+    const tokenData = (await tokenRes.json()) as { access_token: string };
+    const accessToken = tokenData.access_token;
     rooms[roomId].spotifyToken = accessToken;
     io.to(rooms[roomId].hostId).emit('spotifyToken', accessToken);
     res.send('<script>window.close();</script>');

@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { earliestYearFromRecordings } from './gameLogic';
 import type { Card, Room, MusicBrainzRecording } from './types';
 
@@ -11,17 +10,17 @@ export async function getSpotifyToken(): Promise<string> {
   const creds = Buffer.from(
     `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
   ).toString('base64');
-  const res = await axios.post(
-    'https://accounts.spotify.com/api/token',
-    'grant_type=client_credentials',
-    {
-      headers: {
-        Authorization: `Basic ${creds}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    }
-  );
-  return res.data.access_token as string;
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${creds}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  });
+  if (!res.ok) throw new Error(`Spotify token error: ${res.status}`);
+  const data = (await res.json()) as { access_token: string };
+  return data.access_token;
 }
 
 export async function getMusicBrainzYear(
@@ -31,7 +30,7 @@ export async function getMusicBrainzYear(
   try {
     const primaryArtist = artist.split(',')[0].trim();
     const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
-    const res = await axios.get(
+    const res = await fetch(
       `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
       {
         headers: {
@@ -40,10 +39,10 @@ export async function getMusicBrainzYear(
         },
       }
     );
+    if (!res.ok) throw new Error(`MusicBrainz error: ${res.status}`);
+    const data = (await res.json()) as { recordings?: MusicBrainzRecording[] };
     const year = earliestYearFromRecordings(
-      ((res.data.recordings as MusicBrainzRecording[]) || []).filter(
-        (r) => r.score >= 90
-      )
+      (data.recordings || []).filter((r) => r.score >= 90)
     );
     if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
   } catch {
@@ -60,36 +59,38 @@ export async function getPlaylistTracks(
   let url: string | null =
     `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
   while (url) {
-    const res = await axios.get(url, {
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (!res.ok) throw new Error(`Spotify playlist error: ${res.status}`);
+    const data = (await res.json()) as {
+      items: {
+        track: {
+          id: string;
+          name: string;
+          artists: Array<{ name: string }>;
+          album: {
+            release_date?: string;
+            images?: Array<{ url: string }>;
+          };
+        } | null;
+      }[];
+      next: string | null;
+    };
     tracks = tracks.concat(
-      res.data.items
-        .filter(
-          (i: { track: { album?: { release_date?: string } } | null }) =>
-            i.track && i.track.album?.release_date
-        )
+      data.items
+        .filter((i) => i.track && i.track.album?.release_date)
         .map(
-          (i: {
-            track: {
-              id: string;
-              name: string;
-              artists: Array<{ name: string }>;
-              album: {
-                release_date: string;
-                images?: Array<{ url: string }>;
-              };
-            };
-          }): Card => ({
-            trackId: i.track.id,
-            title: i.track.name,
-            artist: i.track.artists.map((a) => a.name).join(', '),
-            year: parseInt(i.track.album.release_date.substring(0, 4)),
-            albumArt: i.track.album.images?.[1]?.url || null,
+          (i): Card => ({
+            trackId: i.track!.id,
+            title: i.track!.name,
+            artist: i.track!.artists.map((a) => a.name).join(', '),
+            year: parseInt(i.track!.album.release_date!.substring(0, 4)),
+            albumArt: i.track!.album.images?.[1]?.url || null,
           })
         )
     );
-    url = res.data.next as string | null;
+    url = data.next;
   }
   return tracks;
 }
