@@ -34,7 +34,7 @@ export function useSpotifyPlayer(
 
       player.addListener('ready', async ({ device_id }) => {
         console.log('Spotify SDK ready, device_id:', device_id);
-        await fetch('https://api.spotify.com/v1/me/player', {
+        const res = await fetch('https://api.spotify.com/v1/me/player', {
           method: 'PUT',
           headers: {
             Authorization: `Bearer ${spotifyToken}`,
@@ -42,6 +42,12 @@ export function useSpotifyPlayer(
           },
           body: JSON.stringify({ device_ids: [device_id], play: false }),
         });
+        if (!res.ok && res.status !== 204) {
+          const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+          console.error('Transfer playback failed:', res.status, body);
+          setSdkError(`Spotify error (${res.status}): ${body?.error?.message || 'transfer playback failed'}`);
+          return;
+        }
         setDeviceId(device_id);
         setSdkError(null);
       });
