@@ -10,13 +10,21 @@ import {
   generateId,
   createRoom,
   roomPublicState,
-  earliestYearFromRecordings,
   pickRandomTrack,
   makeRateLimiter,
   applyReveal,
   advanceTurn,
+  defaultSettings,
+  checkGameover,
 } from './gameLogic';
-import type { Room, Card, MusicBrainzRecording } from './types';
+import {
+  getSpotifyToken,
+  getPlaylistTracks,
+  enrichCurrentCardYear,
+  ENRICH_TIMEOUT_MS,
+} from './spotifyService';
+import type { RoomSettings } from './types';
+import type { Room, Card } from './types';
 
 const REQUIRED_ENV = [
   'SPOTIFY_CLIENT_ID',
@@ -47,132 +55,81 @@ app.use(express.json());
 // ─── In-Memory Game State ────────────────────────────────────────────────────
 
 const rooms: Record<string, Room> = {};
+let globalDefaultSettings = defaultSettings();
 const revealTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 const inactivityTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 const disconnectTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+const autoAdvanceTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 const INACTIVITY_MS = 60 * 60 * 1000; // 60 minutes
+const MAX_PLAYER_NAME_LENGTH = 30;
+const DISCONNECT_GRACE_PERIOD_MS = 10000;
+
+function clearAutoAdvanceTimer(roomId: string): void {
+  if (autoAdvanceTimers[roomId]) {
+    clearTimeout(autoAdvanceTimers[roomId]);
+    delete autoAdvanceTimers[roomId];
+  }
+}
+
+function clearRevealTimer(roomId: string): void {
+  if (revealTimers[roomId]) {
+    clearTimeout(revealTimers[roomId]);
+    delete revealTimers[roomId];
+  }
+}
+
+function clearPlayerTimer(playerId: string): void {
+  if (disconnectTimers[playerId]) {
+    clearTimeout(disconnectTimers[playerId]);
+    delete disconnectTimers[playerId];
+  }
+}
+
+function deleteRoom(roomId: string): void {
+  const room = rooms[roomId];
+  if (room) Object.keys(room.players).forEach(clearPlayerTimer);
+  clearRevealTimer(roomId);
+  clearAutoAdvanceTimer(roomId);
+  if (inactivityTimers[roomId]) {
+    clearTimeout(inactivityTimers[roomId]);
+    delete inactivityTimers[roomId];
+  }
+  delete rooms[roomId];
+}
 
 function resetInactivityTimer(roomId: string): void {
   if (inactivityTimers[roomId]) clearTimeout(inactivityTimers[roomId]);
   inactivityTimers[roomId] = setTimeout(() => {
-    const room = rooms[roomId];
-    if (room) {
-      Object.keys(room.players).forEach((pid) => {
-        if (disconnectTimers[pid]) {
-          clearTimeout(disconnectTimers[pid]);
-          delete disconnectTimers[pid];
-        }
-      });
-      if (revealTimers[roomId]) {
-        clearTimeout(revealTimers[roomId]);
-        delete revealTimers[roomId];
-      }
-    }
-    delete rooms[roomId];
-    delete inactivityTimers[roomId];
+    deleteRoom(roomId);
     console.log(`Room ${roomId} removed after 60 min inactivity`);
   }, INACTIVITY_MS);
 }
 
 // ─── Spotify Helpers ─────────────────────────────────────────────────────────
-
-async function getSpotifyToken(): Promise<string> {
-  const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET } = process.env;
-  const creds = Buffer.from(
-    `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
-  ).toString('base64');
-  const res = await axios.post(
-    'https://accounts.spotify.com/api/token',
-    'grant_type=client_credentials',
-    {
-      headers: {
-        Authorization: `Basic ${creds}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    }
-  );
-  return res.data.access_token as string;
-}
-
-async function getMusicBrainzYear(
-  title: string,
-  artist: string
-): Promise<{ year: number; via: string } | null> {
-  try {
-    const primaryArtist = artist.split(',')[0].trim();
-    const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
-    const res = await axios.get(
-      `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
-      {
-        headers: {
-          'User-Agent':
-            'MusicQuiz/1.0 (+https://github.com/music-quiz-party-game)',
-        },
-      }
-    );
-    const year = earliestYearFromRecordings(
-      ((res.data.recordings as MusicBrainzRecording[]) || []).filter(
-        (r) => r.score >= 90
-      )
-    );
-    if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
-  } catch {
-    // search failed
-  }
-  return null;
-}
-
-async function getPlaylistTracks(
-  playlistId: string,
-  token: string
-): Promise<Card[]> {
-  let tracks: Card[] = [];
-  let url: string | null =
-    `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
-  while (url) {
-    const res = await axios.get(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    tracks = tracks.concat(
-      res.data.items
-        .filter(
-          (i: { track: { album?: { release_date?: string } } | null }) =>
-            i.track && i.track.album?.release_date
-        )
-        .map(
-          (i: {
-            track: {
-              id: string;
-              name: string;
-              artists: Array<{ name: string }>;
-              album: { release_date: string; images?: Array<{ url: string }> };
-            };
-          }): Card => ({
-            trackId: i.track.id,
-            title: i.track.name,
-            artist: i.track.artists.map((a) => a.name).join(', '),
-            year: parseInt(i.track.album.release_date.substring(0, 4)),
-            albumArt: i.track.album.images?.[1]?.url || null,
-          })
-        )
-    );
-    url = res.data.next as string | null;
-  }
-  return tracks;
-}
+// Functions moved to spotifyService.ts
 
 function triggerNextTurn(roomId: string): void {
   const room = rooms[roomId];
   if (!room || room.phase !== 'reveal') return;
 
   if (!advanceTurn(room)) {
+    room.gameoverReason = 'no_players';
+    io.to(roomId).emit('gameState', roomPublicState(room));
+    return;
+  }
+
+  const gameoverReason = checkGameover(room);
+  if (gameoverReason) {
+    room.phase = 'gameover';
+    room.gameoverReason = gameoverReason;
     io.to(roomId).emit('gameState', roomPublicState(room));
     return;
   }
 
   if (!startTurn(room, roomId)) {
     room.phase = 'gameover';
+    room.gameoverReason = 'no_tracks';
     io.to(roomId).emit('gameState', roomPublicState(room));
     return;
   }
@@ -186,42 +143,17 @@ function triggerReveal(roomId: string): void {
   delete revealTimers[roomId];
 
   room.phase = 'reveal';
-
+  room.revealedAt = Date.now();
   applyReveal(room);
 
-  io.to(roomId).emit('gameState', roomPublicState(room));
-}
-
-const ENRICH_TIMEOUT_MS = 5000;
-const yearCache = new Map<string, number | null>();
-
-async function enrichCurrentCardYear(room: Room, track: Card): Promise<void> {
-  let mbYear: number | null;
-  if (yearCache.has(track.trackId)) {
-    mbYear = yearCache.get(track.trackId)!;
-  } else {
-    const result = await getMusicBrainzYear(track.title, track.artist);
-    mbYear = result ? result.year : null;
-    yearCache.set(track.trackId, mbYear);
-    const spotifyYear = track.year;
-    if (mbYear) {
-      console.log(
-        `[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${mbYear} (via ${result!.via}) → ${Math.min(spotifyYear, mbYear)}`
-      );
-    } else {
-      console.log(
-        `[Year] "${track.title}" – Spotify: ${spotifyYear} (MusicBrainz: kein Treffer)`
-      );
-    }
-  }
-  if (mbYear && room.currentCard?.trackId === track.trackId) {
-    const finalYear = Math.min(track.year, mbYear);
-    room.currentCard.year = finalYear;
-    const playlistTrack = room.playlist?.tracks.find(
-      (t) => t.trackId === track.trackId
+  if (room.settings.autoAdvanceSeconds !== null) {
+    autoAdvanceTimers[roomId] = setTimeout(
+      () => triggerNextTurn(roomId),
+      room.settings.autoAdvanceSeconds * 1000
     );
-    if (playlistTrack) playlistTrack.year = finalYear;
   }
+
+  io.to(roomId).emit('gameState', roomPublicState(room));
 }
 
 // startTurn is synchronous — clients see the new turn immediately.
@@ -339,11 +271,11 @@ io.on('connection', (socket: Socket) => {
       if (!rl('createRoom')) return cb({ error: 'Too many requests' });
       if (!playerName || typeof playerName !== 'string')
         return cb({ error: 'Invalid name' });
-      playerName = playerName.trim().substring(0, 30);
+      playerName = playerName.trim().substring(0, MAX_PLAYER_NAME_LENGTH);
       if (!playerName) return cb({ error: 'Name required' });
       const roomId = generateRoomId();
       const playerId = generateId();
-      rooms[roomId] = createRoom(playerId, playerName);
+      rooms[roomId] = { ...createRoom(playerId, playerName), settings: { ...globalDefaultSettings } };
       socket.join(roomId);
       socket.join(playerId);
       socket.data.roomId = roomId;
@@ -366,7 +298,7 @@ io.on('connection', (socket: Socket) => {
       if (!rl('joinRoom')) return cb({ error: 'Too many requests' });
       if (!playerName || typeof playerName !== 'string')
         return cb({ error: 'Invalid name' });
-      playerName = playerName.trim().substring(0, 30);
+      playerName = playerName.trim().substring(0, MAX_PLAYER_NAME_LENGTH);
       if (!playerName) return cb({ error: 'Name required' });
       const room = rooms[roomId];
       if (!room) return cb({ error: 'Room not found' });
@@ -409,10 +341,7 @@ io.on('connection', (socket: Socket) => {
       if (!room || !room.players[playerId])
         return cb({ error: 'Session not found' });
 
-      if (disconnectTimers[playerId]) {
-        clearTimeout(disconnectTimers[playerId]);
-        delete disconnectTimers[playerId];
-      }
+      clearPlayerTimer(playerId);
 
       socket.join(roomId);
       socket.join(playerId);
@@ -487,6 +416,7 @@ io.on('connection', (socket: Socket) => {
       }
     }
 
+    room.gameoverReason = null;
     if (!startTurn(room, roomId))
       return socket.emit('error', 'No tracks available');
 
@@ -514,8 +444,7 @@ io.on('connection', (socket: Socket) => {
 
       room.phase = 'placed';
 
-      const timeout =
-        parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10') * 1000;
+      const timeout = room.settings.revealTimeoutSeconds * 1000;
       revealTimers[roomId] = setTimeout(() => triggerReveal(roomId), timeout);
 
       resetInactivityTimer(roomId);
@@ -528,15 +457,15 @@ io.on('connection', (socket: Socket) => {
     const room = rooms[roomId];
     if (!room || room.phase !== 'placed') return;
     if (socket.data.playerId === room.currentPlayerId) return;
+    // Only the first challenger is accepted — once anyone has challenged, the
+    // reveal fires immediately and no further challenges are meaningful.
+    if (Object.values(room.players).some((p) => p.challenged)) return;
 
     room.players[socket.data.playerId].challenged = true;
     io.to(roomId).emit('gameState', roomPublicState(room));
 
     // Cancel auto-reveal timer and reveal immediately
-    if (revealTimers[roomId]) {
-      clearTimeout(revealTimers[roomId]);
-      delete revealTimers[roomId];
-    }
+    clearRevealTimer(roomId);
     triggerReveal(roomId);
   });
 
@@ -549,9 +478,47 @@ io.on('connection', (socket: Socket) => {
       room.phase !== 'reveal'
     )
       return;
+    clearAutoAdvanceTimer(roomId);
     resetInactivityTimer(roomId);
     triggerNextTurn(roomId);
   });
+
+  socket.on('continueGame', ({ roomId }: { roomId: string }) => {
+    const room = rooms[roomId];
+    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'gameover') return;
+    room.settings.maxRounds = null;
+    room.gameoverReason = null;
+    room.phase = 'reveal';
+    clearAutoAdvanceTimer(roomId);
+    resetInactivityTimer(roomId);
+    triggerNextTurn(roomId);
+  });
+
+  socket.on(
+    'updateSettings',
+    ({ roomId, settings }: { roomId: string; settings: RoomSettings }) => {
+      const room = rooms[roomId];
+      if (!room || room.hostId !== socket.data.playerId) return;
+      const revealTimeoutSeconds = Math.min(
+        60,
+        Math.max(1, Math.round(Number(settings.revealTimeoutSeconds)) || 10)
+      );
+      const autoAdvanceSeconds =
+        settings.autoAdvanceSeconds === null
+          ? null
+          : Math.min(
+              120,
+              Math.max(1, Math.round(Number(settings.autoAdvanceSeconds)) || 5)
+            );
+      const maxRounds =
+        settings.maxRounds === null
+          ? null
+          : Math.min(999, Math.max(1, Math.round(Number(settings.maxRounds)) || 10));
+      room.settings = { revealTimeoutSeconds, autoAdvanceSeconds, maxRounds };
+      globalDefaultSettings = { ...room.settings };
+      io.to(roomId).emit('gameState', roomPublicState(room));
+    }
+  );
 
   socket.on('disconnect', () => {
     const { roomId, playerId } = socket.data as {
@@ -572,15 +539,7 @@ io.on('connection', (socket: Socket) => {
       delete disconnectTimers[playerId];
 
       if (Object.keys(room.players).length === 0) {
-        delete rooms[roomId];
-        if (revealTimers[roomId]) {
-          clearTimeout(revealTimers[roomId]);
-          delete revealTimers[roomId];
-        }
-        if (inactivityTimers[roomId]) {
-          clearTimeout(inactivityTimers[roomId]);
-          delete inactivityTimers[roomId];
-        }
+        deleteRoom(roomId);
         console.log(`Room ${roomId} deleted — no players left`);
         return;
       }
@@ -599,10 +558,7 @@ io.on('connection', (socket: Socket) => {
         room.currentPlayerId === playerId &&
         (room.phase === 'playing' || room.phase === 'placed')
       ) {
-        if (revealTimers[roomId]) {
-          clearTimeout(revealTimers[roomId]);
-          delete revealTimers[roomId];
-        }
+        clearRevealTimer(roomId);
         room.phase = 'reveal';
         room.lastResult = null;
         triggerNextTurn(roomId);
@@ -613,7 +569,7 @@ io.on('connection', (socket: Socket) => {
       console.log(
         `${playerName} removed from room ${roomId} after grace period`
       );
-    }, 10000); // 10s grace period for page reload
+    }, DISCONNECT_GRACE_PERIOD_MS);
   });
 });
 

@@ -1,4 +1,4 @@
-import { applyReveal, advanceTurn } from '../gameLogic';
+import { applyReveal, advanceTurn, checkGameover } from '../gameLogic';
 import type { Room, Card, InternalPlayer, Phase } from '../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -35,6 +35,9 @@ function makeRoom({
     spotifyToken: null,
     oauthState: null,
     placedAt: null,
+    revealedAt: null,
+    settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+    gameoverReason: null,
   };
 }
 
@@ -72,7 +75,7 @@ describe('applyReveal — correct placement', () => {
     expect(room.lastResult).toEqual({
       playerName: 'Alice',
       correct: true,
-      challengers: [],
+      challenger: null,
     });
   });
 
@@ -125,7 +128,7 @@ describe('applyReveal — correct placement', () => {
     applyReveal(room);
     expect(room.players.p1.score).toBe(1);
     expect(room.players.p2.timeline).toHaveLength(1);
-    expect(room.lastResult?.challengers).toEqual([]);
+    expect(room.lastResult?.challenger).toBeNull();
   });
 
   it('correct placement — challenger with empty timeline loses no card', () => {
@@ -170,7 +173,7 @@ describe('applyReveal — wrong placement', () => {
     });
     applyReveal(room);
     expect(room.players.p2.score).toBe(1);
-    expect(room.lastResult?.challengers).toEqual(['Bob']);
+    expect(room.lastResult?.challenger).toBe('Bob');
     expect(room.players.p2.timeline.map((t) => t.year)).toEqual([1985, 1990]);
   });
 
@@ -206,21 +209,21 @@ describe('applyReveal — wrong placement', () => {
     ]);
   });
 
-  it('multiple challengers all receive the card and score', () => {
+  it('only the one challenger receives the card and score', () => {
     const c = card('t2', 1990);
     const room = makeRoom({
       currentCard: c,
       currentPlayerId: 'p1',
       players: {
         p1: player('Alice', [c, card('t1', 1980)]), // wrong
-        p2: player('Bob', [], 0, true),
-        p3: player('Carol', [], 0, true),
+        p2: player('Bob', [], 0, true), // the challenger
+        p3: player('Carol', [], 0, false), // did not challenge
       },
     });
     applyReveal(room);
     expect(room.players.p2.score).toBe(1);
-    expect(room.players.p3.score).toBe(1);
-    expect(room.lastResult?.challengers).toHaveLength(2);
+    expect(room.players.p3.score).toBe(0);
+    expect(room.lastResult?.challenger).toBe('Bob');
   });
 
   it('non-challenging players are unaffected on wrong placement', () => {
@@ -315,7 +318,7 @@ describe('advanceTurn', () => {
     expect(room.phase).toBe('gameover');
   });
 
-  it('increments round counter', () => {
+  it('increments round counter after advancing', () => {
     const room = makeRoom({
       playerOrder: ['p1', 'p2'],
       currentTurnIndex: 0,
@@ -327,5 +330,36 @@ describe('advanceTurn', () => {
     });
     advanceTurn(room);
     expect(room.round).toBe(6);
+  });
+});
+
+// ─── checkGameover ────────────────────────────────────────────────────────────
+
+describe('checkGameover', () => {
+  function roundRoom(round: number, maxRounds: number | null) {
+    const room = makeRoom({
+      players: { p1: player('Alice') },
+      currentPlayerId: 'p1',
+      currentCard: card('t1', 2000),
+      round,
+    });
+    room.settings = { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds };
+    return room;
+  }
+
+  it('returns null when maxRounds is null (unlimited)', () => {
+    expect(checkGameover(roundRoom(100, null))).toBeNull();
+  });
+
+  it('returns rounds when round exceeds maxRounds', () => {
+    expect(checkGameover(roundRoom(11, 10))).toBe('rounds');
+  });
+
+  it('returns null when round equals maxRounds (turn not over yet)', () => {
+    expect(checkGameover(roundRoom(10, 10))).toBeNull();
+  });
+
+  it('returns null when round is below maxRounds', () => {
+    expect(checkGameover(roundRoom(5, 10))).toBeNull();
   });
 });

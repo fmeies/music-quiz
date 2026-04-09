@@ -1,12 +1,6 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
-} from 'react';
-import { io, Socket } from 'socket.io-client';
-import type { GameState, GameContextValue, PublicPlayer } from '../types';
+import React, { createContext, useContext, useState } from 'react';
+import type { GameContextValue, PublicPlayer, RoomSettings } from '../types';
+import { useGameSocket, STORAGE_KEYS } from '../hooks/useGameSocket';
 
 const GameContext = createContext<GameContextValue | null>(null);
 
@@ -14,60 +8,21 @@ const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
 const lsKey = (k: string) => `${import.meta.env.BASE_URL}${k}`;
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-  const socketRef = useRef<Socket | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [playerId, setPlayerId] = useState<string | null>(null);
-  const [roomId, setRoomId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
-  const playerIdRef = useRef<string | null>(null);
+  const {
+    socketRef,
+    playerIdRef,
+    connected,
+    gameState,
+    playerId,
+    setPlayerId,
+    roomId,
+    setRoomId,
+    error,
+    setError,
+    spotifyToken,
+  } = useGameSocket();
 
-  useEffect(() => {
-    const code = localStorage.getItem(lsKey('mqCode')) || '';
-    const socket = io(window.location.origin, {
-      path: `${BASE}/socket.io`,
-      auth: { code },
-    });
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      setConnected(true);
-      const session = JSON.parse(
-        localStorage.getItem(lsKey('mqSession')) || 'null'
-      ) as { roomId: string; playerId: string } | null;
-      if (!session) return;
-      socket.emit(
-        'reconnectPlayer',
-        session,
-        (res: { ok: true } | { error: string }) => {
-          if ('ok' in res) {
-            playerIdRef.current = session.playerId;
-            setPlayerId(session.playerId);
-            setRoomId(session.roomId);
-          } else {
-            // Server no longer has this session (e.g. restart) — reset to join screen
-            localStorage.removeItem(lsKey('mqSession'));
-            playerIdRef.current = null;
-            setPlayerId(null);
-            setRoomId(null);
-            setGameState(null);
-          }
-        }
-      );
-    });
-    socket.on('disconnect', () => setConnected(false));
-    socket.on('gameState', setGameState);
-    socket.on('error', (msg: string) => {
-      setError(msg);
-      setTimeout(() => setError(null), 15000);
-    });
-    socket.on('spotifyToken', setSpotifyToken);
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+  const [connectingSpotify, setConnectingSpotify] = useState(false);
 
   const createRoom = (playerName: string) =>
     new Promise<{ roomId: string; playerId: string }>((resolve, reject) => {
@@ -80,7 +35,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setPlayerId(res.playerId);
           setRoomId(res.roomId);
           localStorage.setItem(
-            lsKey('mqSession'),
+            lsKey(STORAGE_KEYS.SESSION),
             JSON.stringify({ roomId: res.roomId, playerId: res.playerId })
           );
           resolve(res);
@@ -99,7 +54,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setPlayerId(res.playerId);
           setRoomId(res.roomId);
           localStorage.setItem(
-            lsKey('mqSession'),
+            lsKey(STORAGE_KEYS.SESSION),
             JSON.stringify({ roomId: res.roomId, playerId: res.playerId })
           );
           resolve(res);
@@ -108,12 +63,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     });
 
   const connectSpotify = async () => {
-    const win = window.open('', '_blank', 'width=500,height=700');
-    const res = await fetch(`${BASE}/auth/spotify/url?roomId=${roomId}`);
-    const { url } = (await res.json()) as { url: string };
-    win!.location.href = url;
+    if (connectingSpotify) return;
+    setConnectingSpotify(true);
+    try {
+      const win = window.open('', '_blank', 'width=500,height=700');
+      const res = await fetch(`${BASE}/auth/spotify/url?roomId=${roomId}`);
+      const { url } = (await res.json()) as { url: string };
+      win!.location.href = url;
+    } finally {
+      setConnectingSpotify(false);
+    }
   };
 
+  const updateSettings = (settings: RoomSettings) =>
+    socketRef.current!.emit('updateSettings', { roomId, settings });
+  const continueGame = () =>
+    socketRef.current!.emit('continueGame', { roomId });
   const loadPlaylist = (playlistUrl: string) =>
     socketRef.current!.emit('loadPlaylist', { roomId, playlistUrl });
   const startGame = () => socketRef.current!.emit('startGame', { roomId });
@@ -141,6 +106,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         me,
         isActivePlayer: isActivePlayer ?? false,
         spotifyToken,
+        connectingSpotify,
+        updateSettings,
+        continueGame,
         createRoom,
         joinRoom,
         connectSpotify,

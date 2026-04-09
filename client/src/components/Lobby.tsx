@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGame } from '../context/GameContext';
+import OptionsMenu from './OptionsMenu';
 
 export default function Lobby() {
   const {
@@ -10,6 +11,7 @@ export default function Lobby() {
     startGame,
     connectSpotify,
     spotifyToken,
+    connectingSpotify,
   } = useGame();
   const [playlistUrl, setPlaylistUrl] = useState('');
   const [manualMode, setManualMode] = useState(false);
@@ -49,8 +51,12 @@ export default function Lobby() {
             {spotifyToken ? (
               <p className="success">✅ Connected</p>
             ) : (
-              <button className="btn-connect-spotify" onClick={connectSpotify}>
-                Connect Spotify
+              <button
+                className="btn-connect-spotify"
+                onClick={connectSpotify}
+                disabled={connectingSpotify}
+              >
+                {connectingSpotify ? 'Connecting…' : 'Connect Spotify'}
               </button>
             )}
           </div>
@@ -114,13 +120,16 @@ export default function Lobby() {
             )}
           </div>
 
-          <button
-            className="btn-start"
-            disabled={!gameState?.playlist || players.length < 1}
-            onClick={startGame}
-          >
-            🎵 Start game
-          </button>
+          <div className="lobby-actions-row">
+            <button
+              className="btn-start"
+              disabled={!gameState?.playlist || players.length < 1}
+              onClick={startGame}
+            >
+              🎵 Start game
+            </button>
+            <OptionsMenu />
+          </div>
         </div>
       )}
 

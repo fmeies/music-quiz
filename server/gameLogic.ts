@@ -11,6 +11,8 @@ import type {
   RateLimitConfig,
   RateLimitWindow,
   LastResult,
+  RoomSettings,
+  GameoverReason,
 } from './types';
 
 export const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -36,6 +38,14 @@ export function generateId(): string {
   return crypto.randomBytes(12).toString('hex');
 }
 
+export function defaultSettings(): RoomSettings {
+  return {
+    revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
+    autoAdvanceSeconds: null,
+    maxRounds: 10,
+  };
+}
+
 export function createRoom(hostId: string, hostName: string): Room {
   return {
     hostId,
@@ -53,7 +63,10 @@ export function createRoom(hostId: string, hostName: string): Room {
     spotifyToken: null,
     oauthState: null,
     placedAt: null,
+    revealedAt: null,
     lastResult: null,
+    settings: defaultSettings(),
+    gameoverReason: null,
   };
 }
 
@@ -94,7 +107,9 @@ export function roomPublicState(room: Room): GameState {
     playlist: room.playlist,
     lastResult: room.lastResult,
     placedAt: room.placedAt,
-    revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
+    revealedAt: room.revealedAt,
+    settings: room.settings,
+    gameoverReason: room.gameoverReason,
     playlists: Object.keys(process.env)
       .filter((k) => /^PLAYLIST_\d+_NAME$/.test(k))
       .sort()
@@ -126,7 +141,7 @@ export function earliestYearFromRecordings(
   return earliest;
 }
 
-export function pickRandomTrack(room: Room): Card | null {
+export function pickRandomTrack(room: Pick<Room, 'playlist' | 'usedTracks'>): Card | null {
   const available = room.playlist!.tracks.filter(
     (t) => !room.usedTracks.has(t.trackId)
   );
@@ -164,39 +179,55 @@ export function applyReveal(room: Room): boolean {
   const next = activePlayer.timeline[cardIdx + 1];
   const correct = (!prev || prev.year <= year) && (!next || next.year >= year);
 
+  const challenger = Object.values(room.players).find(
+    (p: InternalPlayer) => p.challenged
+  ) ?? null;
+
   if (correct) {
     activePlayer.score += 1;
-    Object.values(room.players).forEach((p: InternalPlayer) => {
-      if (p.challenged && p.timeline.length > 0) {
-        p.timeline.splice(Math.floor(Math.random() * p.timeline.length), 1);
-      }
-    });
+    if (challenger && challenger.timeline.length > 0) {
+      challenger.timeline.splice(
+        Math.floor(Math.random() * challenger.timeline.length),
+        1
+      );
+    }
     room.lastResult = {
       playerName: activePlayer.name,
       correct: true,
-      challengers: [],
+      challenger: null,
     } satisfies LastResult;
   } else {
     activePlayer.timeline.splice(cardIdx, 1);
-    const challengers: string[] = [];
-    Object.values(room.players).forEach((p: InternalPlayer) => {
-      if (p.challenged) {
-        p.score += 1;
-        challengers.push(p.name);
-        const insertIdx = p.timeline.findIndex((c) => c.year > year);
-        p.timeline.splice(insertIdx === -1 ? p.timeline.length : insertIdx, 0, {
-          ...room.currentCard!,
-        });
-      }
-    });
+    if (challenger) {
+      challenger.score += 1;
+      const insertIdx = challenger.timeline.findIndex((c) => c.year > year);
+      challenger.timeline.splice(
+        insertIdx === -1 ? challenger.timeline.length : insertIdx,
+        0,
+        { ...room.currentCard! }
+      );
+    }
     room.lastResult = {
       playerName: activePlayer.name,
       correct: false,
-      challengers,
+      challenger: challenger?.name ?? null,
     } satisfies LastResult;
   }
 
   return true;
+}
+
+// Returns the gameover reason if the round limit has been reached, null otherwise.
+export function checkGameover(
+  room: Pick<Room, 'round' | 'settings'>
+): GameoverReason | null {
+  if (
+    room.settings.maxRounds !== null &&
+    room.round > room.settings.maxRounds
+  ) {
+    return 'rounds';
+  }
+  return null;
 }
 
 // Pure turn-rotation logic for triggerNextTurn — modifies room in place.

@@ -4,6 +4,7 @@ import CodeGate from './components/CodeGate';
 import JoinScreen from './components/JoinScreen';
 import Lobby from './components/Lobby';
 import GameScreen from './components/GameScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 
 function AppInner() {
@@ -50,8 +51,10 @@ export default function App() {
     );
 
   return (
-    <GameProvider>
-      <AppInner />
-    </GameProvider>
+    <ErrorBoundary>
+      <GameProvider>
+        <AppInner />
+      </GameProvider>
+    </ErrorBoundary>
   );
 }

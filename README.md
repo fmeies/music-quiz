@@ -9,9 +9,9 @@ A browser-based multiplayer music quiz inspired by the Hitster board game. Playe
 3. Players take turns being the active player
 4. The host plays the song (full track via Spotify Premium)
 5. The active player places the card in their timeline
-6. Other players can challenge if they think the placement is wrong
-7. The year is revealed — correct placement earns a point; wrong placement removes the card (challengers get it instead)
-8. Most points at the end wins!
+6. Any other player can challenge if they think the placement is wrong — the first to challenge triggers an immediate reveal
+7. The year is revealed — correct placement earns a point; wrong placement removes the card (the challenger gets it instead)
+8. The game ends after a configurable number of rounds (default 10); the host can continue playing if desired
 
 ## Requirements
 
@@ -44,7 +44,6 @@ APP_URL=https://your-domain.com
 REDIRECT_URI=https://your-domain.com/music-quiz/auth/spotify/callback
 PORT=3011
 APP_CODE=your_secret_access_code
-REVEAL_TIMEOUT_SECONDS=10
 
 PLAYLIST_1_NAME=My Playlist
 PLAYLIST_1_URL=https://open.spotify.com/playlist/xxx
@@ -99,27 +98,34 @@ docker compose up -d --build    # Rebuild after code changes
 ```
 music-quiz/
 ├── server/
-│   ├── index.js          # Express + Socket.io + Spotify API
-│   ├── gameLogic.js      # Pure game logic (tested independently)
-│   ├── __tests__/        # Jest tests
+│   ├── index.ts              # Express + Socket.io + Spotify OAuth, timer management
+│   ├── gameLogic.ts          # Pure game logic (tested independently)
+│   ├── spotifyService.ts     # Spotify & MusicBrainz API calls, year cache
+│   ├── types.ts              # Shared server-side TypeScript types
+│   ├── __tests__/            # Jest tests
 │   ├── .env.example
 │   └── package.json
 ├── client/
 │   ├── index.html
 │   ├── .env.example
 │   └── src/
-│       ├── App.jsx
+│       ├── App.tsx
 │       ├── App.css
-│       ├── __tests__/    # Vitest tests
+│       ├── __tests__/        # Vitest tests
 │       ├── context/
-│       │   └── GameContext.jsx   # Socket.io state + actions
+│       │   └── GameContext.tsx       # Socket.io state + actions
+│       ├── hooks/
+│       │   ├── useGameSocket.ts      # Socket lifecycle + reconnection
+│       │   └── useSpotifyPlayer.ts   # Spotify Web Playback SDK
 │       └── components/
-│           ├── CodeGate.jsx      # Access code screen
-│           ├── JoinScreen.jsx    # Create / join room
-│           ├── Lobby.jsx         # Waiting room + playlist loader
-│           ├── GameScreen.jsx    # Main game view
-│           ├── NowPlaying.jsx    # Current song + Spotify player
-│           └── Timeline.jsx      # Player's card timeline
+│           ├── CodeGate.tsx          # Access code screen
+│           ├── JoinScreen.tsx        # Create / join room
+│           ├── Lobby.tsx             # Waiting room + playlist loader
+│           ├── GameScreen.tsx        # Main game view
+│           ├── NowPlaying.tsx        # Current song + Spotify player
+│           ├── Timeline.tsx          # Player's card timeline
+│           ├── OptionsMenu.tsx       # In-game settings modal
+│           └── ErrorBoundary.tsx     # React error boundary
 ├── docker-compose.yml
 └── package.json
 ```

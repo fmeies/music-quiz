@@ -63,11 +63,14 @@ describe('roomPublicState', () => {
     playlist: null,
     lastResult: null,
     placedAt: null,
+    revealedAt: null,
     playerOrder: [],
     currentTurnIndex: 0,
     usedTracks: new Set(),
     spotifyToken: null,
     oauthState: null,
+    settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+    gameoverReason: null,
     players: {
       p1: { name: 'Alice', score: 0, challenged: false, timeline: [] },
     },
@@ -176,7 +179,12 @@ describe('roomPublicState', () => {
   it('uses default revealTimeoutSeconds of 10', () => {
     delete process.env.REVEAL_TIMEOUT_SECONDS;
     const state = roomPublicState(baseRoom());
-    expect(state.revealTimeoutSeconds).toBe(10);
+    expect(state.settings.revealTimeoutSeconds).toBe(10);
+  });
+
+  it('default autoAdvanceSeconds is null', () => {
+    const state = roomPublicState(baseRoom());
+    expect(state.settings.autoAdvanceSeconds).toBeNull();
   });
 });
 
@@ -262,7 +270,7 @@ describe('pickRandomTrack', () => {
         ],
       },
       usedTracks: new Set(['a', 'b']),
-    } as unknown as Room;
+    };
     expect(pickRandomTrack(room)).toBeNull();
   });
 
@@ -277,7 +285,7 @@ describe('pickRandomTrack', () => {
         ],
       },
       usedTracks: new Set(['a', 'b']),
-    } as unknown as Room;
+    };
     expect(pickRandomTrack(room)).toMatchObject({ trackId: 'c' });
   });
 
@@ -289,7 +297,7 @@ describe('pickRandomTrack', () => {
     const room = {
       playlist: { id: 'p', tracks },
       usedTracks: new Set<string>(),
-    } as unknown as Room;
+    };
     const picked = pickRandomTrack(room);
     expect(tracks).toContainEqual(picked);
   });

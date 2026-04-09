@@ -1,5 +1,13 @@
 export type Phase = 'lobby' | 'playing' | 'placed' | 'reveal' | 'gameover';
 
+export interface RoomSettings {
+  revealTimeoutSeconds: number;
+  autoAdvanceSeconds: number | null;
+  maxRounds: number | null;
+}
+
+export type GameoverReason = 'rounds' | 'no_tracks' | 'no_players' | null;
+
 export interface Card {
   trackId: string;
   title: string;
@@ -23,7 +31,7 @@ export interface Playlist {
 export interface LastResult {
   playerName: string;
   correct: boolean;
-  challengers: string[];
+  challenger: string | null;
 }
 
 export interface PresetPlaylist {
@@ -46,7 +54,10 @@ export interface Room {
   spotifyToken: string | null;
   oauthState: string | null;
   placedAt: number | null;
+  revealedAt: number | null;
   lastResult: LastResult | null;
+  settings: RoomSettings;
+  gameoverReason: GameoverReason;
   playlistLoading?: boolean;
 }
 
@@ -87,7 +98,9 @@ export interface GameState {
   playlist: Playlist | null;
   lastResult: LastResult | null;
   placedAt: number | null;
-  revealTimeoutSeconds: number;
+  revealedAt: number | null;
+  settings: RoomSettings;
+  gameoverReason: GameoverReason;
   playlists: PresetPlaylist[];
 }
 
