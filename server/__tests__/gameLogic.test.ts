@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import {
   ROOM_CODE_CHARS,
   generateRoomId,

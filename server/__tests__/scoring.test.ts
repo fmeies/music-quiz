@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { applyReveal, advanceTurn, checkGameover } from '../gameLogic';
 import type { Room, Card, InternalPlayer, Phase } from '../types';
 

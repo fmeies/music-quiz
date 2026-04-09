@@ -1,26 +1,22 @@
-process.env.SPOTIFY_CLIENT_ID = 'test-client-id';
-process.env.SPOTIFY_CLIENT_SECRET = 'test-secret';
-process.env.REDIRECT_URI = 'http://localhost/callback';
-process.env.APP_CODE = 'secret123';
-process.env.APP_URL = 'http://localhost';
-
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { io as ioc } from 'socket.io-client';
 import type { Socket as ClientSocket } from 'socket.io-client';
 import { server } from '../index';
 import type { GameState, RoomSettings } from '../types';
 
-jest.setTimeout(20000);
-
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 let port: number;
 
-beforeAll((done) => {
-  server.listen(0, () => {
-    port = (server.address() as { port: number }).port;
-    done();
-  });
-});
+beforeAll(
+  () =>
+    new Promise<void>((resolve) => {
+      server.listen(0, () => {
+        port = (server.address() as { port: number }).port;
+        resolve();
+      });
+    })
+);
 
 afterAll(
   () => new Promise<void>((resolve) => server.close(() => resolve())),
@@ -68,21 +64,22 @@ async function createRoomAsHost(
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 describe('Socket — auth', () => {
-  it('rejects connections with wrong code', (done) => {
-    const sock = ioc(`http://localhost:${port}`, {
-      auth: { code: 'wrong' },
-      transports: ['websocket'],
-      reconnection: false,
-    });
-    sock.on('connect_error', () => {
-      sock.disconnect();
-      done();
-    });
-    sock.on('connect', () => {
-      sock.disconnect();
-      done(new Error('should not have connected'));
-    });
-  });
+  it('rejects connections with wrong code', () =>
+    new Promise<void>((resolve, reject) => {
+      const sock = ioc(`http://localhost:${port}`, {
+        auth: { code: 'wrong' },
+        transports: ['websocket'],
+        reconnection: false,
+      });
+      sock.on('connect_error', () => {
+        sock.disconnect();
+        resolve();
+      });
+      sock.on('connect', () => {
+        sock.disconnect();
+        reject(new Error('should not have connected'));
+      });
+    }));
 
   it('accepts connections with correct code', async () => {
     const sock = await connect();
