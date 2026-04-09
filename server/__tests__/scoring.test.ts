@@ -36,7 +36,11 @@ function makeRoom({
     oauthState: null,
     placedAt: null,
     revealedAt: null,
-    settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+    settings: {
+      revealTimeoutSeconds: 10,
+      autoAdvanceSeconds: null,
+      maxRounds: 10,
+    },
     gameoverReason: null,
   };
 }
@@ -343,7 +347,11 @@ describe('checkGameover', () => {
       currentCard: card('t1', 2000),
       round,
     });
-    room.settings = { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds };
+    room.settings = {
+      revealTimeoutSeconds: 10,
+      autoAdvanceSeconds: null,
+      maxRounds,
+    };
     return room;
   }
 

@@ -69,7 +69,11 @@ describe('roomPublicState', () => {
     usedTracks: new Set(),
     spotifyToken: null,
     oauthState: null,
-    settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+    settings: {
+      revealTimeoutSeconds: 10,
+      autoAdvanceSeconds: null,
+      maxRounds: 10,
+    },
     gameoverReason: null,
     players: {
       p1: { name: 'Alice', score: 0, challenged: false, timeline: [] },

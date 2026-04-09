@@ -15,7 +15,11 @@ export default function OptionsMenu() {
 
   return (
     <>
-      <button className="btn-options" onClick={() => setOpen(true)} title="Options">
+      <button
+        className="btn-options"
+        onClick={() => setOpen(true)}
+        title="Options"
+      >
         ⚙️
       </button>
 
@@ -34,7 +38,12 @@ export default function OptionsMenu() {
                   max={60}
                   value={s.revealTimeoutSeconds}
                   onChange={(e) =>
-                    set({ revealTimeoutSeconds: Math.min(60, Math.max(1, parseInt(e.target.value) || 10)) })
+                    set({
+                      revealTimeoutSeconds: Math.min(
+                        60,
+                        Math.max(1, parseInt(e.target.value) || 10)
+                      ),
+                    })
                   }
                 />
                 <span>seconds</span>
@@ -61,7 +70,12 @@ export default function OptionsMenu() {
                       max={120}
                       value={s.autoAdvanceSeconds}
                       onChange={(e) =>
-                        set({ autoAdvanceSeconds: Math.min(120, Math.max(1, parseInt(e.target.value) || 5)) })
+                        set({
+                          autoAdvanceSeconds: Math.min(
+                            120,
+                            Math.max(1, parseInt(e.target.value) || 5)
+                          ),
+                        })
                       }
                     />
                     <span>seconds</span>
@@ -89,7 +103,12 @@ export default function OptionsMenu() {
                       max={999}
                       value={s.maxRounds}
                       onChange={(e) =>
-                        set({ maxRounds: Math.min(999, Math.max(1, parseInt(e.target.value) || 10)) })
+                        set({
+                          maxRounds: Math.min(
+                            999,
+                            Math.max(1, parseInt(e.target.value) || 10)
+                          ),
+                        })
                       }
                     />
                     <span>rounds</span>

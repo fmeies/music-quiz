@@ -5,9 +5,17 @@ import { useGame } from '../context/GameContext';
 import type { GameContextValue, GameState } from '../types';
 
 vi.mock('../context/GameContext', () => ({ useGame: vi.fn() }));
-vi.mock('../components/NowPlaying', () => ({ default: () => <div data-testid="now-playing" /> }));
-vi.mock('../components/Timeline', () => ({ default: ({ playerId }: { playerId: string | null }) => <div data-testid={`timeline-${playerId}`} /> }));
-vi.mock('../components/OptionsMenu', () => ({ default: () => <button data-testid="options-menu">⚙️</button> }));
+vi.mock('../components/NowPlaying', () => ({
+  default: () => <div data-testid="now-playing" />,
+}));
+vi.mock('../components/Timeline', () => ({
+  default: ({ playerId }: { playerId: string | null }) => (
+    <div data-testid={`timeline-${playerId}`} />
+  ),
+}));
+vi.mock('../components/OptionsMenu', () => ({
+  default: () => <button data-testid="options-menu">⚙️</button>,
+}));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,22 +26,40 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     hostId: 'p1',
     currentPlayerId: 'p1',
     players: {
-      p1: { name: 'Alice', score: 2, challenged: false, timeline: [], timelineCount: 0 },
-      p2: { name: 'Bob', score: 1, challenged: false, timeline: [], timelineCount: 0 },
+      p1: {
+        name: 'Alice',
+        score: 2,
+        challenged: false,
+        timeline: [],
+        timelineCount: 0,
+      },
+      p2: {
+        name: 'Bob',
+        score: 1,
+        challenged: false,
+        timeline: [],
+        timelineCount: 0,
+      },
     },
     currentCard: null,
     playlist: null,
     lastResult: null,
     placedAt: null,
     revealedAt: null,
-    settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+    settings: {
+      revealTimeoutSeconds: 10,
+      autoAdvanceSeconds: null,
+      maxRounds: 10,
+    },
     gameoverReason: null,
     playlists: [],
     ...overrides,
   };
 }
 
-function makeContext(overrides: Partial<GameContextValue> = {}): GameContextValue {
+function makeContext(
+  overrides: Partial<GameContextValue> = {}
+): GameContextValue {
   return {
     connected: true,
     gameState: makeGameState(),
@@ -42,7 +68,13 @@ function makeContext(overrides: Partial<GameContextValue> = {}): GameContextValu
     error: null,
     clearError: vi.fn(),
     isHost: true,
-    me: { name: 'Alice', score: 2, challenged: false, timeline: [], timelineCount: 0 },
+    me: {
+      name: 'Alice',
+      score: 2,
+      challenged: false,
+      timeline: [],
+      timelineCount: 0,
+    },
     isActivePlayer: true,
     spotifyToken: null,
     connectingSpotify: false,
@@ -85,7 +117,9 @@ describe('GameScreen — phase badges', () => {
 
   it('shows challenge phase badge in placed phase', () => {
     vi.mocked(useGame).mockReturnValue(
-      makeContext({ gameState: makeGameState({ phase: 'placed', placedAt: Date.now() }) })
+      makeContext({
+        gameState: makeGameState({ phase: 'placed', placedAt: Date.now() }),
+      })
     );
     render(<GameScreen />);
     expect(screen.getByText('👀 Challenge phase')).toBeDefined();
@@ -108,7 +142,13 @@ describe('GameScreen — challenge button', () => {
       makeContext({
         isActivePlayer: false,
         playerId: 'p2',
-        me: { name: 'Bob', score: 1, challenged: false, timeline: [], timelineCount: 0 },
+        me: {
+          name: 'Bob',
+          score: 1,
+          challenged: false,
+          timeline: [],
+          timelineCount: 0,
+        },
         gameState: makeGameState({
           phase: 'placed',
           placedAt: Date.now(),
@@ -125,14 +165,32 @@ describe('GameScreen — challenge button', () => {
       makeContext({
         isActivePlayer: false,
         playerId: 'p2',
-        me: { name: 'Bob', score: 1, challenged: true, timeline: [], timelineCount: 0 },
+        me: {
+          name: 'Bob',
+          score: 1,
+          challenged: true,
+          timeline: [],
+          timelineCount: 0,
+        },
         gameState: makeGameState({
           phase: 'placed',
           placedAt: Date.now(),
           currentPlayerId: 'p1',
           players: {
-            p1: { name: 'Alice', score: 2, challenged: false, timeline: [], timelineCount: 0 },
-            p2: { name: 'Bob', score: 1, challenged: true, timeline: [], timelineCount: 0 },
+            p1: {
+              name: 'Alice',
+              score: 2,
+              challenged: false,
+              timeline: [],
+              timelineCount: 0,
+            },
+            p2: {
+              name: 'Bob',
+              score: 1,
+              challenged: true,
+              timeline: [],
+              timelineCount: 0,
+            },
           },
         }),
       })
@@ -158,7 +216,13 @@ describe('GameScreen — challenge button', () => {
       makeContext({
         isActivePlayer: false,
         playerId: 'p2',
-        me: { name: 'Bob', score: 1, challenged: false, timeline: [], timelineCount: 0 },
+        me: {
+          name: 'Bob',
+          score: 1,
+          challenged: false,
+          timeline: [],
+          timelineCount: 0,
+        },
         gameState: makeGameState({
           phase: 'placed',
           placedAt: Date.now(),
@@ -200,7 +264,10 @@ describe('GameScreen — next turn button', () => {
 
   it('hides "Next →" for host outside reveal phase', () => {
     vi.mocked(useGame).mockReturnValue(
-      makeContext({ isHost: true, gameState: makeGameState({ phase: 'playing' }) })
+      makeContext({
+        isHost: true,
+        gameState: makeGameState({ phase: 'playing' }),
+      })
     );
     render(<GameScreen />);
     expect(screen.queryByRole('button', { name: /Next/ })).toBeNull();
@@ -209,7 +276,11 @@ describe('GameScreen — next turn button', () => {
   it('calls nextTurn() when next button is clicked', () => {
     const nextTurn = vi.fn();
     vi.mocked(useGame).mockReturnValue(
-      makeContext({ isHost: true, gameState: makeGameState({ phase: 'reveal' }), nextTurn })
+      makeContext({
+        isHost: true,
+        gameState: makeGameState({ phase: 'reveal' }),
+        nextTurn,
+      })
     );
     render(<GameScreen />);
     fireEvent.click(screen.getByRole('button', { name: /Next/ }));
@@ -242,7 +313,11 @@ describe('GameScreen — challenge countdown', () => {
         gameState: makeGameState({
           phase: 'placed',
           placedAt: Date.now(),
-          settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+          settings: {
+            revealTimeoutSeconds: 10,
+            autoAdvanceSeconds: null,
+            maxRounds: 10,
+          },
         }),
       })
     );
@@ -256,7 +331,11 @@ describe('GameScreen — challenge countdown', () => {
         gameState: makeGameState({
           phase: 'reveal',
           revealedAt: Date.now(),
-          settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: 5, maxRounds: 10 },
+          settings: {
+            revealTimeoutSeconds: 10,
+            autoAdvanceSeconds: 5,
+            maxRounds: 10,
+          },
         }),
       })
     );
@@ -270,7 +349,11 @@ describe('GameScreen — challenge countdown', () => {
         gameState: makeGameState({
           phase: 'reveal',
           revealedAt: Date.now(),
-          settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+          settings: {
+            revealTimeoutSeconds: 10,
+            autoAdvanceSeconds: null,
+            maxRounds: 10,
+          },
         }),
       })
     );
@@ -290,18 +373,30 @@ describe('GameScreen — countdown ticking', () => {
       makeContext({
         isActivePlayer: false,
         playerId: 'p2',
-        me: { name: 'Bob', score: 1, challenged: false, timeline: [], timelineCount: 0 },
+        me: {
+          name: 'Bob',
+          score: 1,
+          challenged: false,
+          timeline: [],
+          timelineCount: 0,
+        },
         gameState: makeGameState({
           phase: 'placed',
           placedAt: Date.now(),
           currentPlayerId: 'p1',
-          settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+          settings: {
+            revealTimeoutSeconds: 10,
+            autoAdvanceSeconds: null,
+            maxRounds: 10,
+          },
         }),
       })
     );
     render(<GameScreen />);
     expect(screen.getByText('10')).toBeDefined();
-    act(() => { vi.advanceTimersByTime(3000); });
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
     expect(screen.getByText('7')).toBeDefined();
     vi.useRealTimers();
   });
@@ -316,8 +411,20 @@ describe('GameScreen — gameover', () => {
         gameState: makeGameState({
           phase: 'gameover',
           players: {
-            p1: { name: 'Alice', score: 5, challenged: false, timeline: [], timelineCount: 0 },
-            p2: { name: 'Bob', score: 8, challenged: false, timeline: [], timelineCount: 0 },
+            p1: {
+              name: 'Alice',
+              score: 5,
+              challenged: false,
+              timeline: [],
+              timelineCount: 0,
+            },
+            p2: {
+              name: 'Bob',
+              score: 8,
+              challenged: false,
+              timeline: [],
+              timelineCount: 0,
+            },
           },
         }),
       })
@@ -336,7 +443,11 @@ describe('GameScreen — gameover', () => {
         gameState: makeGameState({
           phase: 'gameover',
           gameoverReason: 'rounds',
-          settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+          settings: {
+            revealTimeoutSeconds: 10,
+            autoAdvanceSeconds: null,
+            maxRounds: 10,
+          },
         }),
       })
     );
@@ -347,7 +458,10 @@ describe('GameScreen — gameover', () => {
   it('shows all songs played reason when gameoverReason is no_tracks', () => {
     vi.mocked(useGame).mockReturnValue(
       makeContext({
-        gameState: makeGameState({ phase: 'gameover', gameoverReason: 'no_tracks' }),
+        gameState: makeGameState({
+          phase: 'gameover',
+          gameoverReason: 'no_tracks',
+        }),
       })
     );
     render(<GameScreen />);
@@ -360,7 +474,10 @@ describe('GameScreen — gameover', () => {
       makeContext({
         isHost: true,
         continueGame,
-        gameState: makeGameState({ phase: 'gameover', gameoverReason: 'rounds' }),
+        gameState: makeGameState({
+          phase: 'gameover',
+          gameoverReason: 'rounds',
+        }),
       })
     );
     render(<GameScreen />);
@@ -374,21 +491,31 @@ describe('GameScreen — gameover', () => {
     vi.mocked(useGame).mockReturnValue(
       makeContext({
         isHost: false,
-        gameState: makeGameState({ phase: 'gameover', gameoverReason: 'rounds' }),
+        gameState: makeGameState({
+          phase: 'gameover',
+          gameoverReason: 'rounds',
+        }),
       })
     );
     render(<GameScreen />);
-    expect(screen.queryByRole('button', { name: /Continue playing/ })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: /Continue playing/ })
+    ).toBeNull();
   });
 
   it('hides Continue button when gameover reason is not rounds', () => {
     vi.mocked(useGame).mockReturnValue(
       makeContext({
         isHost: true,
-        gameState: makeGameState({ phase: 'gameover', gameoverReason: 'no_tracks' }),
+        gameState: makeGameState({
+          phase: 'gameover',
+          gameoverReason: 'no_tracks',
+        }),
       })
     );
     render(<GameScreen />);
-    expect(screen.queryByRole('button', { name: /Continue playing/ })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: /Continue playing/ })
+    ).toBeNull();
   });
 });

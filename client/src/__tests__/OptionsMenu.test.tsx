@@ -9,7 +9,12 @@ vi.mock('../context/GameContext', () => ({ useGame: vi.fn() }));
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeSettings(overrides: Partial<RoomSettings> = {}): RoomSettings {
-  return { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10, ...overrides };
+  return {
+    revealTimeoutSeconds: 10,
+    autoAdvanceSeconds: null,
+    maxRounds: 10,
+    ...overrides,
+  };
 }
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
@@ -31,7 +36,9 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
-function makeContext(overrides: Partial<GameContextValue> = {}): GameContextValue {
+function makeContext(
+  overrides: Partial<GameContextValue> = {}
+): GameContextValue {
   return {
     connected: true,
     gameState: makeGameState(),
@@ -70,7 +77,9 @@ describe('OptionsMenu — visibility', () => {
   });
 
   it('returns null when gameState is null', () => {
-    vi.mocked(useGame).mockReturnValue(makeContext({ gameState: null as unknown as GameState }));
+    vi.mocked(useGame).mockReturnValue(
+      makeContext({ gameState: null as unknown as GameState })
+    );
     const { container } = render(<OptionsMenu />);
     expect(container.firstChild).toBeNull();
   });
@@ -111,7 +120,11 @@ describe('OptionsMenu — visibility', () => {
 describe('OptionsMenu — current values', () => {
   it('shows current revealTimeoutSeconds', () => {
     vi.mocked(useGame).mockReturnValue(
-      makeContext({ gameState: makeGameState({ settings: makeSettings({ revealTimeoutSeconds: 15 }) }) })
+      makeContext({
+        gameState: makeGameState({
+          settings: makeSettings({ revealTimeoutSeconds: 15 }),
+        }),
+      })
     );
     render(<OptionsMenu />);
     fireEvent.click(screen.getByTitle('Options'));
@@ -121,7 +134,11 @@ describe('OptionsMenu — current values', () => {
 
   it('auto-advance checkbox is unchecked when autoAdvanceSeconds is null', () => {
     vi.mocked(useGame).mockReturnValue(
-      makeContext({ gameState: makeGameState({ settings: makeSettings({ autoAdvanceSeconds: null }) }) })
+      makeContext({
+        gameState: makeGameState({
+          settings: makeSettings({ autoAdvanceSeconds: null }),
+        }),
+      })
     );
     render(<OptionsMenu />);
     fireEvent.click(screen.getByTitle('Options'));
@@ -131,7 +148,11 @@ describe('OptionsMenu — current values', () => {
 
   it('auto-advance checkbox is checked when autoAdvanceSeconds is set', () => {
     vi.mocked(useGame).mockReturnValue(
-      makeContext({ gameState: makeGameState({ settings: makeSettings({ autoAdvanceSeconds: 5 }) }) })
+      makeContext({
+        gameState: makeGameState({
+          settings: makeSettings({ autoAdvanceSeconds: 5 }),
+        }),
+      })
     );
     render(<OptionsMenu />);
     fireEvent.click(screen.getByTitle('Options'));
@@ -149,7 +170,11 @@ describe('OptionsMenu — current values', () => {
 
   it('shows auto-advance seconds input when auto-advance is enabled', () => {
     vi.mocked(useGame).mockReturnValue(
-      makeContext({ gameState: makeGameState({ settings: makeSettings({ autoAdvanceSeconds: 8 }) }) })
+      makeContext({
+        gameState: makeGameState({
+          settings: makeSettings({ autoAdvanceSeconds: 8 }),
+        }),
+      })
     );
     render(<OptionsMenu />);
     fireEvent.click(screen.getByTitle('Options'));
@@ -167,7 +192,9 @@ describe('OptionsMenu — interactions', () => {
     vi.mocked(useGame).mockReturnValue(makeContext({ updateSettings }));
     render(<OptionsMenu />);
     fireEvent.click(screen.getByTitle('Options'));
-    fireEvent.change(screen.getByLabelText('Challenge window'), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText('Challenge window'), {
+      target: { value: '20' },
+    });
     expect(updateSettings).toHaveBeenCalledWith(
       expect.objectContaining({ revealTimeoutSeconds: 20 })
     );
@@ -189,7 +216,9 @@ describe('OptionsMenu — interactions', () => {
     vi.mocked(useGame).mockReturnValue(
       makeContext({
         updateSettings,
-        gameState: makeGameState({ settings: makeSettings({ autoAdvanceSeconds: 5 }) }),
+        gameState: makeGameState({
+          settings: makeSettings({ autoAdvanceSeconds: 5 }),
+        }),
       })
     );
     render(<OptionsMenu />);
@@ -205,7 +234,9 @@ describe('OptionsMenu — interactions', () => {
     vi.mocked(useGame).mockReturnValue(
       makeContext({
         updateSettings,
-        gameState: makeGameState({ settings: makeSettings({ maxRounds: null }) }),
+        gameState: makeGameState({
+          settings: makeSettings({ maxRounds: null }),
+        }),
       })
     );
     render(<OptionsMenu />);

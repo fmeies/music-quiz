@@ -28,14 +28,20 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     lastResult: null,
     placedAt: null,
     revealedAt: null,
-    settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+    settings: {
+      revealTimeoutSeconds: 10,
+      autoAdvanceSeconds: null,
+      maxRounds: 10,
+    },
     gameoverReason: null,
     playlists: [],
     ...overrides,
   };
 }
 
-function makeContext(overrides: Partial<GameContextValue> = {}): GameContextValue {
+function makeContext(
+  overrides: Partial<GameContextValue> = {}
+): GameContextValue {
   return {
     connected: true,
     gameState: makeGameState(),
@@ -44,7 +50,13 @@ function makeContext(overrides: Partial<GameContextValue> = {}): GameContextValu
     error: null,
     clearError: vi.fn(),
     isHost: true,
-    me: { name: 'Alice', score: 3, challenged: false, timeline: [], timelineCount: 0 },
+    me: {
+      name: 'Alice',
+      score: 3,
+      challenged: false,
+      timeline: [],
+      timelineCount: 0,
+    },
     isActivePlayer: true,
     spotifyToken: null,
     connectingSpotify: false,
@@ -97,8 +109,20 @@ describe('Timeline — rendering', () => {
         playerId: 'p2',
         gameState: makeGameState({
           players: {
-            p1: { name: 'Alice', score: 3, challenged: false, timeline: [], timelineCount: 0 },
-            p2: { name: 'Bob', score: 1, challenged: false, timeline: [], timelineCount: 0 },
+            p1: {
+              name: 'Alice',
+              score: 3,
+              challenged: false,
+              timeline: [],
+              timelineCount: 0,
+            },
+            p2: {
+              name: 'Bob',
+              score: 1,
+              challenged: false,
+              timeline: [],
+              timelineCount: 0,
+            },
           },
         }),
       })
@@ -148,7 +172,13 @@ describe('Timeline — cards', () => {
               challenged: false,
               timelineCount: 1,
               timeline: [
-                { trackId: 't1', title: 'Bohemian Rhapsody', artist: 'Queen', year: 1975, albumArt: null },
+                {
+                  trackId: 't1',
+                  title: 'Bohemian Rhapsody',
+                  artist: 'Queen',
+                  year: 1975,
+                  albumArt: null,
+                },
               ],
             },
           },
@@ -213,8 +243,20 @@ describe('Timeline — drop zones', () => {
               challenged: false,
               timelineCount: 2,
               timeline: [
-                { trackId: 't1', title: 'Song A', artist: 'Band', year: 1980, albumArt: null },
-                { trackId: 't2', title: 'Song B', artist: 'Band', year: 1990, albumArt: null },
+                {
+                  trackId: 't1',
+                  title: 'Song A',
+                  artist: 'Band',
+                  year: 1980,
+                  albumArt: null,
+                },
+                {
+                  trackId: 't2',
+                  title: 'Song B',
+                  artist: 'Band',
+                  year: 1990,
+                  albumArt: null,
+                },
               ],
             },
           },
@@ -281,7 +323,13 @@ describe('Timeline — drop zones', () => {
               challenged: false,
               timelineCount: 1,
               timeline: [
-                { trackId: 't1', title: 'Song A', artist: 'Band', year: 1980, albumArt: null },
+                {
+                  trackId: 't1',
+                  title: 'Song A',
+                  artist: 'Band',
+                  year: 1980,
+                  albumArt: null,
+                },
               ],
             },
           },
@@ -305,7 +353,13 @@ describe('Timeline — challenged badge', () => {
           phase: 'placed',
           placedAt: Date.now(),
           players: {
-            p1: { name: 'Alice', score: 3, challenged: true, timeline: [], timelineCount: 0 },
+            p1: {
+              name: 'Alice',
+              score: 3,
+              challenged: true,
+              timeline: [],
+              timelineCount: 0,
+            },
           },
         }),
       })
@@ -320,7 +374,13 @@ describe('Timeline — challenged badge', () => {
         gameState: makeGameState({
           phase: 'reveal',
           players: {
-            p1: { name: 'Alice', score: 3, challenged: true, timeline: [], timelineCount: 0 },
+            p1: {
+              name: 'Alice',
+              score: 3,
+              challenged: true,
+              timeline: [],
+              timelineCount: 0,
+            },
           },
         }),
       })

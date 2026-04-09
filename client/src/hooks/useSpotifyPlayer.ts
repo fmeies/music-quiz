@@ -43,9 +43,13 @@ export function useSpotifyPlayer(
           body: JSON.stringify({ device_ids: [device_id], play: false }),
         });
         if (!res.ok && res.status !== 204) {
-          const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+          const body = (await res.json().catch(() => ({}))) as {
+            error?: { message?: string };
+          };
           console.error('Transfer playback failed:', res.status, body);
-          setSdkError(`Spotify error (${res.status}): ${body?.error?.message || 'transfer playback failed'}`);
+          setSdkError(
+            `Spotify error (${res.status}): ${body?.error?.message || 'transfer playback failed'}`
+          );
           return;
         }
         setDeviceId(device_id);
@@ -93,7 +97,8 @@ export function useSpotifyPlayer(
 
   // Auto-play when a new track starts
   useEffect(() => {
-    if (phase !== 'playing' || !isHost || !deviceId || !spotifyToken || !card) return;
+    if (phase !== 'playing' || !isHost || !deviceId || !spotifyToken || !card)
+      return;
     fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
       method: 'PUT',
       headers: {

@@ -16,7 +16,9 @@ export default function GameScreen() {
     continueGame,
   } = useGame();
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<number | null>(null);
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState<
+    number | null
+  >(null);
 
   const phase = gameState?.phase;
 
@@ -40,8 +42,16 @@ export default function GameScreen() {
 
   useEffect(() => {
     const autoSecs = gameState?.settings.autoAdvanceSeconds;
-    if (phase === 'reveal' && autoSecs !== null && autoSecs !== undefined && gameState?.revealedAt) {
-      const remainingMs = Math.max(0, gameState.revealedAt + autoSecs * 1000 - Date.now());
+    if (
+      phase === 'reveal' &&
+      autoSecs !== null &&
+      autoSecs !== undefined &&
+      gameState?.revealedAt
+    ) {
+      const remainingMs = Math.max(
+        0,
+        gameState.revealedAt + autoSecs * 1000 - Date.now()
+      );
       setAutoAdvanceCountdown(Math.ceil(remainingMs / 1000));
       if (remainingMs <= 0) return;
       const interval = setInterval(() => {
@@ -99,9 +109,13 @@ export default function GameScreen() {
             phase === 'placed' && (
               <span className="challenged-badge">✅ Challenged</span>
             )}
-          {phase === 'reveal' && autoAdvanceCountdown !== null && autoAdvanceCountdown > 0 && (
-            <span className="countdown countdown-auto">{autoAdvanceCountdown}</span>
-          )}
+          {phase === 'reveal' &&
+            autoAdvanceCountdown !== null &&
+            autoAdvanceCountdown > 0 && (
+              <span className="countdown countdown-auto">
+                {autoAdvanceCountdown}
+              </span>
+            )}
           {isHost && phase === 'reveal' && (
             <button className="btn-next" onClick={nextTurn}>
               Next →

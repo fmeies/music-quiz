@@ -70,7 +70,11 @@ const baseGameState: GameState = {
   lastResult: null,
   placedAt: null,
   revealedAt: null,
-  settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: 10 },
+  settings: {
+    revealTimeoutSeconds: 10,
+    autoAdvanceSeconds: null,
+    maxRounds: 10,
+  },
   gameoverReason: null,
   playlists: [],
 };
@@ -171,7 +175,8 @@ describe('GameContext — createRoom', () => {
   it('emits createRoom with playerName', async () => {
     mockSocket.emit.mockImplementation(
       (event: string, _data: unknown, cb?: (res: unknown) => void) => {
-        if (event === 'createRoom' && cb) cb({ roomId: 'ABCDE', playerId: 'p1' });
+        if (event === 'createRoom' && cb)
+          cb({ roomId: 'ABCDE', playerId: 'p1' });
       }
     );
     renderWithProvider();
@@ -188,7 +193,8 @@ describe('GameContext — createRoom', () => {
   it('updates playerId and roomId on success', async () => {
     mockSocket.emit.mockImplementation(
       (event: string, _data: unknown, cb?: (res: unknown) => void) => {
-        if (event === 'createRoom' && cb) cb({ roomId: 'ABCDE', playerId: 'p1' });
+        if (event === 'createRoom' && cb)
+          cb({ roomId: 'ABCDE', playerId: 'p1' });
       }
     );
     renderWithProvider();
@@ -202,7 +208,8 @@ describe('GameContext — createRoom', () => {
   it('persists session to localStorage on success', async () => {
     mockSocket.emit.mockImplementation(
       (event: string, _data: unknown, cb?: (res: unknown) => void) => {
-        if (event === 'createRoom' && cb) cb({ roomId: 'ABCDE', playerId: 'p1' });
+        if (event === 'createRoom' && cb)
+          cb({ roomId: 'ABCDE', playerId: 'p1' });
       }
     );
     renderWithProvider();
@@ -333,7 +340,8 @@ describe('GameContext — reconnection', () => {
     );
     mockSocket.emit.mockImplementation(
       (event: string, _data: unknown, cb?: (res: unknown) => void) => {
-        if (event === 'reconnectPlayer' && cb) cb({ error: 'Session not found' });
+        if (event === 'reconnectPlayer' && cb)
+          cb({ error: 'Session not found' });
       }
     );
     renderWithProvider();

@@ -275,7 +275,10 @@ io.on('connection', (socket: Socket) => {
       if (!playerName) return cb({ error: 'Name required' });
       const roomId = generateRoomId();
       const playerId = generateId();
-      rooms[roomId] = { ...createRoom(playerId, playerName), settings: { ...globalDefaultSettings } };
+      rooms[roomId] = {
+        ...createRoom(playerId, playerName),
+        settings: { ...globalDefaultSettings },
+      };
       socket.join(roomId);
       socket.join(playerId);
       socket.data.roomId = roomId;
@@ -485,7 +488,12 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('continueGame', ({ roomId }: { roomId: string }) => {
     const room = rooms[roomId];
-    if (!room || room.hostId !== socket.data.playerId || room.phase !== 'gameover') return;
+    if (
+      !room ||
+      room.hostId !== socket.data.playerId ||
+      room.phase !== 'gameover'
+    )
+      return;
     room.settings.maxRounds = null;
     room.gameoverReason = null;
     room.phase = 'reveal';
@@ -513,7 +521,10 @@ io.on('connection', (socket: Socket) => {
       const maxRounds =
         settings.maxRounds === null
           ? null
-          : Math.min(999, Math.max(1, Math.round(Number(settings.maxRounds)) || 10));
+          : Math.min(
+              999,
+              Math.max(1, Math.round(Number(settings.maxRounds)) || 10)
+            );
       room.settings = { revealTimeoutSeconds, autoAdvanceSeconds, maxRounds };
       globalDefaultSettings = { ...room.settings };
       io.to(roomId).emit('gameState', roomPublicState(room));

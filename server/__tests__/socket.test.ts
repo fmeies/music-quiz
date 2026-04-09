@@ -191,7 +191,11 @@ describe('Socket — updateSettings', () => {
     const updated = nextEvent<GameState>(sock, 'gameState');
     sock.emit('updateSettings', {
       roomId,
-      settings: { revealTimeoutSeconds: 999, autoAdvanceSeconds: null, maxRounds: 10 },
+      settings: {
+        revealTimeoutSeconds: 999,
+        autoAdvanceSeconds: null,
+        maxRounds: 10,
+      },
     });
     const state = await updated;
     expect(state.settings.revealTimeoutSeconds).toBe(60);
@@ -203,7 +207,11 @@ describe('Socket — updateSettings', () => {
     const updated = nextEvent<GameState>(sock, 'gameState');
     sock.emit('updateSettings', {
       roomId,
-      settings: { revealTimeoutSeconds: -5, autoAdvanceSeconds: null, maxRounds: 10 },
+      settings: {
+        revealTimeoutSeconds: -5,
+        autoAdvanceSeconds: null,
+        maxRounds: 10,
+      },
     });
     const state = await updated;
     expect(state.settings.revealTimeoutSeconds).toBe(1);
@@ -215,7 +223,11 @@ describe('Socket — updateSettings', () => {
     const updated = nextEvent<GameState>(sock, 'gameState');
     sock.emit('updateSettings', {
       roomId,
-      settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: 7, maxRounds: 10 },
+      settings: {
+        revealTimeoutSeconds: 10,
+        autoAdvanceSeconds: 7,
+        maxRounds: 10,
+      },
     });
     const state = await updated;
     expect(state.settings.autoAdvanceSeconds).toBe(7);
@@ -227,7 +239,11 @@ describe('Socket — updateSettings', () => {
     const updated = nextEvent<GameState>(sock, 'gameState');
     sock.emit('updateSettings', {
       roomId,
-      settings: { revealTimeoutSeconds: 10, autoAdvanceSeconds: null, maxRounds: null },
+      settings: {
+        revealTimeoutSeconds: 10,
+        autoAdvanceSeconds: null,
+        maxRounds: null,
+      },
     });
     const state = await updated;
     expect(state.settings.maxRounds).toBeNull();
@@ -252,7 +268,11 @@ describe('Socket — updateSettings', () => {
     });
     guest.emit('updateSettings', {
       roomId,
-      settings: { revealTimeoutSeconds: 60, autoAdvanceSeconds: null, maxRounds: null },
+      settings: {
+        revealTimeoutSeconds: 60,
+        autoAdvanceSeconds: null,
+        maxRounds: null,
+      },
     });
 
     await new Promise((r) => setTimeout(r, 100));

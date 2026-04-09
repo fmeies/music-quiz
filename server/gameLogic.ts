@@ -141,7 +141,9 @@ export function earliestYearFromRecordings(
   return earliest;
 }
 
-export function pickRandomTrack(room: Pick<Room, 'playlist' | 'usedTracks'>): Card | null {
+export function pickRandomTrack(
+  room: Pick<Room, 'playlist' | 'usedTracks'>
+): Card | null {
   const available = room.playlist!.tracks.filter(
     (t) => !room.usedTracks.has(t.trackId)
   );
@@ -179,9 +181,9 @@ export function applyReveal(room: Room): boolean {
   const next = activePlayer.timeline[cardIdx + 1];
   const correct = (!prev || prev.year <= year) && (!next || next.year >= year);
 
-  const challenger = Object.values(room.players).find(
-    (p: InternalPlayer) => p.challenged
-  ) ?? null;
+  const challenger =
+    Object.values(room.players).find((p: InternalPlayer) => p.challenged) ??
+    null;
 
   if (correct) {
     activePlayer.score += 1;
