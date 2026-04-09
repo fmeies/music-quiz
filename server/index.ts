@@ -24,7 +24,7 @@ import {
   ENRICH_TIMEOUT_MS,
 } from './spotifyService';
 import type { RoomSettings } from './types';
-import type { Room, Card } from './types';
+import type { Room } from './types';
 
 const REQUIRED_ENV = [
   'SPOTIFY_CLIENT_ID',
