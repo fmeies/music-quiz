@@ -111,7 +111,7 @@ npm run format    # Prettier (write)
 npm run format:check  # Prettier (check only, used in CI)
 ```
 
-**Server** — Jest + Supertest + ts-jest (`forceExit: true` in jest config). Tests live in `server/__tests__/`:
+**Server** — Vitest + Supertest. Tests live in `server/__tests__/`:
 - `gameLogic.test.ts` — unit tests for pure functions
 - `scoring.test.ts` — `applyReveal`, `advanceTurn`, `checkGameover`
 - `api.test.ts` — REST endpoint integration tests
@@ -132,4 +132,4 @@ npm run format:check  # Prettier (check only, used in CI)
 - Only the **first** player to challenge is accepted per turn; subsequent challenge attempts in the same turn are silently rejected.
 - Challenging immediately triggers reveal (challenge window collapses to 0 s).
 - The host must press "Next →" to advance turns, unless auto-advance is enabled in the options.
-- `socket.test.ts` uses `socket.io-client` as a server dev-dependency and requires `forceExit: true` in Jest config because disconnect grace-period timers (10 s) and inactivity timers (60 min) outlive the test suite.
+- `socket.test.ts` uses `socket.io-client` as a server dev-dependency. The server is started in `beforeAll` and closed in `afterAll`; disconnect grace-period timers (10 s) and inactivity timers (60 min) are handled by process teardown.

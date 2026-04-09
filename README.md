@@ -102,7 +102,7 @@ music-quiz/
 │   ├── gameLogic.ts          # Pure game logic (tested independently)
 │   ├── spotifyService.ts     # Spotify & MusicBrainz API calls, year cache
 │   ├── types.ts              # Shared server-side TypeScript types
-│   ├── __tests__/            # Jest tests
+│   ├── __tests__/            # Vitest tests
 │   ├── .env.example
 │   └── package.json
 ├── client/
