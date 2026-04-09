@@ -17,6 +17,18 @@ import type {
 
 export const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+export const PRESET_PLAYLISTS: { name: string; url: string }[] = Object.keys(
+  process.env
+)
+  .filter((k) => /^PLAYLIST_\d+_NAME$/.test(k))
+  .sort()
+  .flatMap((k) => {
+    const match = k.match(/^PLAYLIST_(\d+)_NAME$/);
+    if (!match) return [];
+    const url = process.env[`PLAYLIST_${match[1]}_URL`];
+    return url ? [{ name: process.env[k] as string, url }] : [];
+  });
+
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   createRoom: { windowMs: 10000, max: 3 },
   joinRoom: { windowMs: 10000, max: 5 },
@@ -110,15 +122,7 @@ export function roomPublicState(room: Room): GameState {
     revealedAt: room.revealedAt,
     settings: room.settings,
     gameoverReason: room.gameoverReason,
-    playlists: Object.keys(process.env)
-      .filter((k) => /^PLAYLIST_\d+_NAME$/.test(k))
-      .sort()
-      .flatMap((k) => {
-        const match = k.match(/^PLAYLIST_(\d+)_NAME$/);
-        if (!match) return [];
-        const url = process.env[`PLAYLIST_${match[1]}_URL`];
-        return url ? [{ name: process.env[k] as string, url }] : [];
-      }),
+    playlists: PRESET_PLAYLISTS,
   };
 }
 
@@ -189,7 +193,7 @@ export function applyReveal(room: Room): boolean {
     activePlayer.score += 1;
     if (challenger && challenger.timeline.length > 0) {
       challenger.timeline.splice(
-        Math.floor(Math.random() * challenger.timeline.length),
+        crypto.randomInt(challenger.timeline.length),
         1
       );
     }
