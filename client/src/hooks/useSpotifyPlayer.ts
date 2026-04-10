@@ -95,10 +95,13 @@ export function useSpotifyPlayer(
     };
   }, [isHost, spotifyToken]);
 
-  // Auto-play when a new track starts
+  // Auto-play when a new track starts (or when deviceId becomes available for the current track)
+  const playedTrackRef = useRef<string | null>(null);
   useEffect(() => {
     if (phase !== 'playing' || !isHost || !deviceId || !spotifyToken || !card)
       return;
+    if (playedTrackRef.current === card.trackId) return;
+    playedTrackRef.current = card.trackId;
     fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
       method: 'PUT',
       headers: {
@@ -120,8 +123,7 @@ export function useSpotifyPlayer(
             );
       })
       .catch((err: Error) => setSdkError(`Playback error: ${err.message}`));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card?.trackId]);
+  }, [card?.trackId, deviceId, phase, isHost, spotifyToken]);
 
   // Pause when game is over
   useEffect(() => {
