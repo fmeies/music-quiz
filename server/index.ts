@@ -227,9 +227,9 @@ app.get('/auth/spotify/url', (req, res) => {
   room.oauthState = oauthState;
 
   const { SPOTIFY_CLIENT_ID, REDIRECT_URI } = process.env;
-  // user-read-private is required by the Web Playback SDK to verify Spotify Premium
+  // user-read-private + user-read-email are required by the Web Playback SDK to verify Spotify Premium
   const scopes =
-    'streaming user-read-playback-state user-modify-playback-state user-read-private';
+    'streaming user-read-playback-state user-modify-playback-state user-read-private user-read-email';
   const url = `https://accounts.spotify.com/authorize?response_type=code&client_id=${SPOTIFY_CLIENT_ID}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(REDIRECT_URI!)}&state=${oauthState}`;
   res.json({ url });
 });
