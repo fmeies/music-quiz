@@ -69,9 +69,7 @@ export function useSpotifyPlayer(
       player.addListener('not_ready', () => setDeviceId(null));
       player.addListener('player_state_changed', (state) => {
         if (!state) return;
-        const nowPlaying = !state.paused;
-        console.log('Player state changed:', { paused: state.paused });
-        setPlaying(nowPlaying);
+        setPlaying(!state.paused);
       });
       player.addListener('initialization_error', ({ message }) => {
         console.error('SDK init error:', message);
@@ -112,12 +110,6 @@ export function useSpotifyPlayer(
   const playedTrackRef = useRef<string | null>(null);
   const firstTrackRef = useRef(true);
   useEffect(() => {
-    console.log('Auto-play effect:', {
-      phase,
-      isHost,
-      deviceId,
-      trackId: card?.trackId,
-    });
     if (phase !== 'playing' || !isHost || !deviceId || !spotifyToken || !card)
       return;
     if (playedTrackRef.current === card.trackId) return;
