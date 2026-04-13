@@ -18,6 +18,12 @@ export function useSpotifyPlayer(
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  const playingRef = useRef(false);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
 
   // Initialize Spotify Web Playback SDK
   useEffect(() => {
@@ -53,13 +59,19 @@ export function useSpotifyPlayer(
           );
           return;
         }
+        // Wait briefly for Spotify backend to propagate the device switch
+        // before allowing auto-play, otherwise the play request can silently
+        // land on a different device.
+        await new Promise((resolve) => setTimeout(resolve, 500));
         setDeviceId(device_id);
         setSdkError(null);
       });
       player.addListener('not_ready', () => setDeviceId(null));
       player.addListener('player_state_changed', (state) => {
         if (!state) return;
-        setPlaying(!state.paused);
+        const nowPlaying = !state.paused;
+        console.log('Player state changed:', { paused: state.paused });
+        setPlaying(nowPlaying);
       });
       player.addListener('initialization_error', ({ message }) => {
         console.error('SDK init error:', message);
@@ -104,29 +116,48 @@ export function useSpotifyPlayer(
       return;
     if (playedTrackRef.current === card.trackId) return;
     playedTrackRef.current = card.trackId;
-    console.log('Auto-play: starting track', card.trackId);
-    fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${spotifyToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ uris: [`spotify:track:${card.trackId}`] }),
-    })
-      .then((res) => {
-        console.log('Auto-play response status:', res.status);
-        if (res.ok) setPlaying(true);
-        else
-          res
-            .json()
-            .catch(() => ({}))
-            .then((body: { error?: { message?: string } }) =>
-              setSdkError(
-                `Playback failed (${res.status}): ${body?.error?.message || ''}`
-              )
-            );
+
+    const doPlay = (attempt: number) => {
+      console.log(`Auto-play: starting track ${card.trackId} (attempt ${attempt})`);
+      fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${spotifyToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ uris: [`spotify:track:${card.trackId}`] }),
       })
-      .catch((err: Error) => setSdkError(`Playback error: ${err.message}`));
+        .then((res) => {
+          console.log('Auto-play response status:', res.status);
+          if (!res.ok)
+            res
+              .json()
+              .catch(() => ({}))
+              .then((body: { error?: { message?: string } }) =>
+                setSdkError(
+                  `Playback failed (${res.status}): ${body?.error?.message || ''}`
+                )
+              );
+        })
+        .catch((err: Error) => setSdkError(`Playback error: ${err.message}`));
+    };
+
+    doPlay(1);
+
+    // Retry once after 3 s if player_state_changed never confirmed playback.
+    // This recovers the case where the play request silently lands on a
+    // different Spotify device and our SDK player never fires player_state_changed.
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    retryTimerRef.current = setTimeout(() => {
+      if (!playingRef.current) {
+        console.log('Auto-play: no playback confirmed after 3s, retrying');
+        doPlay(2);
+      }
+    }, 3000);
+
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
   }, [card?.trackId, deviceId, phase, isHost, spotifyToken]);
 
   // Pause when game is over
