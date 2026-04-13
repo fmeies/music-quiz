@@ -30,7 +30,9 @@ export async function getMusicBrainzYear(
 ): Promise<{ year: number; via: string } | null> {
   try {
     const primaryArtist = artist.split(',')[0].trim();
-    log(`[MusicBrainz] Lookup: title="${title}", artist="${artist}"${primaryArtist !== artist ? ` (using primary: "${primaryArtist}")` : ''}`);
+    log(
+      `[MusicBrainz] Lookup: title="${title}", artist="${artist}"${primaryArtist !== artist ? ` (using primary: "${primaryArtist}")` : ''}`
+    );
     const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
     log(`[MusicBrainz] Query: ${query}`);
     const url = `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
@@ -40,12 +42,16 @@ export async function getMusicBrainzYear(
           'MusicQuiz/1.0 (+https://github.com/music-quiz-party-game)',
       },
     });
-    log(`[MusicBrainz] Response: ${res.status} for "${title}" / "${primaryArtist}"`);
+    log(
+      `[MusicBrainz] Response: ${res.status} for "${title}" / "${primaryArtist}"`
+    );
     if (!res.ok) throw new Error(`MusicBrainz error: ${res.status}`);
     const data = (await res.json()) as { recordings?: MusicBrainzRecording[] };
     const total = data.recordings?.length ?? 0;
     const qualified = (data.recordings || []).filter((r) => r.score >= 90);
-    log(`[MusicBrainz] ${total} recordings returned, ${qualified.length} with score ≥ 90`);
+    log(
+      `[MusicBrainz] ${total} recordings returned, ${qualified.length} with score ≥ 90`
+    );
     if (total > 0 && qualified.length === 0) {
       const topScore = Math.max(...(data.recordings || []).map((r) => r.score));
       log(`[MusicBrainz] Top score was ${topScore} (below threshold)`);

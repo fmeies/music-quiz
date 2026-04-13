@@ -111,14 +111,21 @@ export function useSpotifyPlayer(
   // Auto-play when a new track starts (or when deviceId becomes available for the current track)
   const playedTrackRef = useRef<string | null>(null);
   useEffect(() => {
-    console.log('Auto-play effect:', { phase, isHost, deviceId, trackId: card?.trackId });
+    console.log('Auto-play effect:', {
+      phase,
+      isHost,
+      deviceId,
+      trackId: card?.trackId,
+    });
     if (phase !== 'playing' || !isHost || !deviceId || !spotifyToken || !card)
       return;
     if (playedTrackRef.current === card.trackId) return;
     playedTrackRef.current = card.trackId;
 
     const doPlay = (attempt: number) => {
-      console.log(`Auto-play: starting track ${card.trackId} (attempt ${attempt})`);
+      console.log(
+        `Auto-play: starting track ${card.trackId} (attempt ${attempt})`
+      );
       fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
         method: 'PUT',
         headers: {

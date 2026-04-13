@@ -580,9 +580,7 @@ io.on('connection', (socket: Socket) => {
 
 const PORT = parseInt(process.env.PORT || '3011');
 if (require.main === module) {
-  server.listen(PORT, () =>
-    log(`Music Quiz server running on port ${PORT}`)
-  );
+  server.listen(PORT, () => log(`Music Quiz server running on port ${PORT}`));
 }
 
 export { app, server };

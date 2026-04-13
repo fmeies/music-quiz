@@ -111,6 +111,8 @@ npm run format    # Prettier (write)
 npm run format:check  # Prettier (check only, used in CI)
 ```
 
+**Before every commit:** always run `npm run format` first. CI runs `format:check` and will fail if formatting is off.
+
 **Server** — Vitest + Supertest. Tests live in `server/__tests__/`:
 - `gameLogic.test.ts` — unit tests for pure functions
 - `scoring.test.ts` — `applyReveal`, `advanceTurn`, `checkGameover`
