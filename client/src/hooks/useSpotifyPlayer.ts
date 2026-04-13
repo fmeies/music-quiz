@@ -110,6 +110,7 @@ export function useSpotifyPlayer(
 
   // Auto-play when a new track starts (or when deviceId becomes available for the current track)
   const playedTrackRef = useRef<string | null>(null);
+  const firstTrackRef = useRef(true);
   useEffect(() => {
     console.log('Auto-play effect:', {
       phase,
@@ -121,6 +122,12 @@ export function useSpotifyPlayer(
       return;
     if (playedTrackRef.current === card.trackId) return;
     playedTrackRef.current = card.trackId;
+
+    if (firstTrackRef.current) {
+      firstTrackRef.current = false;
+      console.log('Auto-play: skipping first track, waiting for manual play');
+      return;
+    }
 
     const doPlay = (attempt: number) => {
       console.log(
