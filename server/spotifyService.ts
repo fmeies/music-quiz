@@ -1,5 +1,6 @@
 import { earliestYearFromRecordings } from './gameLogic';
 import type { Card, Room, MusicBrainzRecording } from './types';
+import { log } from './log';
 
 export const ENRICH_TIMEOUT_MS = 5000;
 const MAX_YEAR_CACHE_SIZE = 500;
@@ -29,24 +30,30 @@ export async function getMusicBrainzYear(
 ): Promise<{ year: number; via: string } | null> {
   try {
     const primaryArtist = artist.split(',')[0].trim();
+    log(`[MusicBrainz] Lookup: title="${title}", artist="${artist}"${primaryArtist !== artist ? ` (using primary: "${primaryArtist}")` : ''}`);
     const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
-    const res = await fetch(
-      `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
-      {
-        headers: {
-          'User-Agent':
-            'MusicQuiz/1.0 (+https://github.com/music-quiz-party-game)',
-        },
-      }
-    );
+    log(`[MusicBrainz] Query: ${query}`);
+    const url = `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent':
+          'MusicQuiz/1.0 (+https://github.com/music-quiz-party-game)',
+      },
+    });
+    log(`[MusicBrainz] Response: ${res.status} for "${title}" / "${primaryArtist}"`);
     if (!res.ok) throw new Error(`MusicBrainz error: ${res.status}`);
     const data = (await res.json()) as { recordings?: MusicBrainzRecording[] };
-    const year = earliestYearFromRecordings(
-      (data.recordings || []).filter((r) => r.score >= 90)
-    );
+    const total = data.recordings?.length ?? 0;
+    const qualified = (data.recordings || []).filter((r) => r.score >= 90);
+    log(`[MusicBrainz] ${total} recordings returned, ${qualified.length} with score ≥ 90`);
+    if (total > 0 && qualified.length === 0) {
+      const topScore = Math.max(...(data.recordings || []).map((r) => r.score));
+      log(`[MusicBrainz] Top score was ${topScore} (below threshold)`);
+    }
+    const year = earliestYearFromRecordings(qualified);
     if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
-  } catch {
-    // search failed
+  } catch (err) {
+    log(`[MusicBrainz] Request failed for "${title}":`, err);
   }
   return null;
 }
@@ -112,11 +119,11 @@ export async function enrichCurrentCardYear(
     yearCache.set(track.trackId, mbYear);
     const spotifyYear = track.year;
     if (mbYear) {
-      console.log(
+      log(
         `[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${mbYear} (via ${result!.via}) → ${Math.min(spotifyYear, mbYear)}`
       );
     } else {
-      console.log(
+      log(
         `[Year] "${track.title}" – Spotify: ${spotifyYear} (MusicBrainz: kein Treffer)`
       );
     }

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import * as crypto from 'crypto';
 import express from 'express';
+import { log } from './log';
 import http from 'http';
 import { Server, Socket } from 'socket.io';
 import {
@@ -99,7 +100,7 @@ function resetInactivityTimer(roomId: string): void {
   if (inactivityTimers[roomId]) clearTimeout(inactivityTimers[roomId]);
   inactivityTimers[roomId] = setTimeout(() => {
     deleteRoom(roomId);
-    console.log(`Room ${roomId} removed after 60 min inactivity`);
+    log(`Room ${roomId} removed after 60 min inactivity`);
   }, INACTIVITY_MS);
 }
 
@@ -254,7 +255,7 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket: Socket) => {
-  console.log('Client connected:', socket.id);
+  log('Client connected:', socket.id);
   const rl = makeRateLimiter();
 
   socket.on(
@@ -280,7 +281,7 @@ io.on('connection', (socket: Socket) => {
       socket.join(playerId);
       socket.data.roomId = roomId;
       socket.data.playerId = playerId;
-      console.log(`Room ${roomId} created by ${playerName}`);
+      log(`Room ${roomId} created by ${playerName}`);
       cb({ roomId, playerId });
       resetInactivityTimer(roomId);
       io.to(roomId).emit('gameState', roomPublicState(rooms[roomId]));
@@ -324,7 +325,7 @@ io.on('connection', (socket: Socket) => {
       socket.join(playerId);
       socket.data.roomId = roomId;
       socket.data.playerId = playerId;
-      console.log(`${playerName} joined room ${roomId}`);
+      log(`${playerName} joined room ${roomId}`);
       cb({ roomId, playerId });
       resetInactivityTimer(roomId);
       io.to(roomId).emit('gameState', roomPublicState(room));
@@ -536,9 +537,7 @@ io.on('connection', (socket: Socket) => {
     if (!roomId || !playerId || !rooms[roomId]) return;
 
     const playerName = rooms[roomId].players[playerId]?.name ?? playerId;
-    console.log(
-      `${playerName} disconnected from room ${roomId} (10s grace period)`
-    );
+    log(`${playerName} disconnected from room ${roomId} (10s grace period)`);
 
     disconnectTimers[playerId] = setTimeout(() => {
       const room = rooms[roomId];
@@ -548,7 +547,7 @@ io.on('connection', (socket: Socket) => {
 
       if (Object.keys(room.players).length === 0) {
         deleteRoom(roomId);
-        console.log(`Room ${roomId} deleted — no players left`);
+        log(`Room ${roomId} deleted — no players left`);
         return;
       }
 
@@ -574,9 +573,7 @@ io.on('connection', (socket: Socket) => {
         io.to(roomId).emit('gameState', roomPublicState(room));
       }
 
-      console.log(
-        `${playerName} removed from room ${roomId} after grace period`
-      );
+      log(`${playerName} removed from room ${roomId} after grace period`);
     }, DISCONNECT_GRACE_PERIOD_MS);
   });
 });
@@ -584,7 +581,7 @@ io.on('connection', (socket: Socket) => {
 const PORT = parseInt(process.env.PORT || '3011');
 if (require.main === module) {
   server.listen(PORT, () =>
-    console.log(`Music Quiz server running on port ${PORT}`)
+    log(`Music Quiz server running on port ${PORT}`)
   );
 }
 
