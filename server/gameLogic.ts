@@ -53,7 +53,7 @@ export function generateId(): string {
 export function defaultSettings(): RoomSettings {
   return {
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
-    autoAdvanceSeconds: null,
+    autoAdvanceSeconds: 5,
     maxCards: 10,
   };
 }
