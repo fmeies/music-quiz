@@ -175,6 +175,7 @@ describe('Socket — updateSettings', () => {
     const settings: RoomSettings = {
       revealTimeoutSeconds: 25,
       autoAdvanceSeconds: null,
+      autoAdvanceChallengeSeconds: null,
       maxCards: 10,
     };
     sock.emit('updateSettings', { roomId, settings });
@@ -191,6 +192,7 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: 999,
         autoAdvanceSeconds: null,
+        autoAdvanceChallengeSeconds: null,
         maxCards: 10,
       },
     });
@@ -207,6 +209,7 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: -5,
         autoAdvanceSeconds: null,
+        autoAdvanceChallengeSeconds: null,
         maxCards: 10,
       },
     });
@@ -223,11 +226,29 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: 10,
         autoAdvanceSeconds: 7,
+        autoAdvanceChallengeSeconds: null,
         maxCards: 10,
       },
     });
     const state = await updated;
     expect(state.settings.autoAdvanceSeconds).toBe(7);
+    sock.disconnect();
+  });
+
+  it('enables autoAdvanceChallengeSeconds', async () => {
+    const { sock, roomId } = await createRoomAsHost();
+    const updated = nextEvent<GameState>(sock, 'gameState');
+    sock.emit('updateSettings', {
+      roomId,
+      settings: {
+        revealTimeoutSeconds: 10,
+        autoAdvanceSeconds: null,
+        autoAdvanceChallengeSeconds: 15,
+        maxCards: 10,
+      },
+    });
+    const state = await updated;
+    expect(state.settings.autoAdvanceChallengeSeconds).toBe(15);
     sock.disconnect();
   });
 
@@ -239,6 +260,7 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: 10,
         autoAdvanceSeconds: null,
+        autoAdvanceChallengeSeconds: null,
         maxCards: null,
       },
     });
@@ -268,6 +290,7 @@ describe('Socket — updateSettings', () => {
       settings: {
         revealTimeoutSeconds: 60,
         autoAdvanceSeconds: null,
+        autoAdvanceChallengeSeconds: null,
         maxCards: null,
       },
     });
