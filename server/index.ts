@@ -520,6 +520,16 @@ io.on('connection', (socket: Socket) => {
               120,
               Math.max(1, Math.round(Number(settings.autoAdvanceSeconds)) || 5)
             );
+      const autoAdvanceChallengeSeconds =
+        settings.autoAdvanceChallengeSeconds === null
+          ? null
+          : Math.min(
+              120,
+              Math.max(
+                1,
+                Math.round(Number(settings.autoAdvanceChallengeSeconds)) || 10
+              )
+            );
       const maxCards =
         settings.maxCards === null
           ? null
@@ -527,7 +537,12 @@ io.on('connection', (socket: Socket) => {
               999,
               Math.max(2, Math.round(Number(settings.maxCards)) || 10)
             );
-      room.settings = { revealTimeoutSeconds, autoAdvanceSeconds, maxCards };
+      room.settings = {
+        revealTimeoutSeconds,
+        autoAdvanceSeconds,
+        autoAdvanceChallengeSeconds,
+        maxCards,
+      };
       globalDefaultSettings = { ...room.settings };
       io.to(roomId).emit('gameState', roomPublicState(room));
     }
