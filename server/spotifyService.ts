@@ -36,12 +36,12 @@ const MB_HEADERS = {
 // Strip common suffixes that confuse MusicBrainz text search
 function normalizeTitle(title: string): string {
   return title
-    .replace(/\s*[\-–]\s*([\d]{4}\s+)?remaster(ed)?(\s+version)?/gi, '')
+    .replace(/\s*[-–]\s*([\d]{4}\s+)?remaster(ed)?(\s+version)?/gi, '')
     .replace(/\s*\(([\d]{4}\s+)?remaster(ed)?(\s+version)?\)/gi, '')
     .replace(/\s*\(radio edit\)/gi, '')
-    .replace(/\s*[\-–]\s*radio edit/gi, '')
+    .replace(/\s*[-–]\s*radio edit/gi, '')
     .replace(/\s*\(single version\)/gi, '')
-    .replace(/\s*[\-–]\s*single version/gi, '')
+    .replace(/\s*[-–]\s*single version/gi, '')
     .replace(/\s*\(album version\)/gi, '')
     .replace(/\s*\(feat\..*?\)/gi, '')
     .replace(/\s*ft\..*$/gi, '')
