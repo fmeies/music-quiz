@@ -84,7 +84,7 @@ export default function Timeline({ playerId }: { playerId: string | null }) {
         {player.name}
         {isMe && ' (You)'}
         {isActiveTimeline && <span className="turn-badge">🎵 active</span>}
-        <span className="score-badge">⭐ {player.score}</span>
+        <span className="score-badge">⭐ {player.timelineCount}</span>
         {player.challenged && phase === 'placed' && (
           <span className="challenged-badge">✋</span>
         )}

@@ -31,6 +31,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     settings: {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
+      autoAdvanceChallengeSeconds: null,
       maxCards: 10,
     },
     gameoverReason: null,
@@ -131,8 +132,22 @@ describe('Timeline — rendering', () => {
     expect(screen.queryByText(/\(You\)/)).toBeNull();
   });
 
-  it('shows the player score', () => {
-    vi.mocked(useGame).mockReturnValue(makeContext());
+  it('shows the player card count', () => {
+    vi.mocked(useGame).mockReturnValue(
+      makeContext({
+        gameState: makeGameState({
+          players: {
+            p1: {
+              name: 'Alice',
+              score: 1,
+              challenged: false,
+              timeline: [],
+              timelineCount: 3,
+            },
+          },
+        }),
+      })
+    );
     render(<Timeline playerId="p1" />);
     expect(screen.getByText(/⭐ 3/)).toBeDefined();
   });

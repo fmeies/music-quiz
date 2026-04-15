@@ -73,6 +73,7 @@ const baseGameState: GameState = {
   settings: {
     revealTimeoutSeconds: 10,
     autoAdvanceSeconds: null,
+    autoAdvanceChallengeSeconds: null,
     maxCards: 10,
   },
   gameoverReason: null,

@@ -3,6 +3,7 @@ export type Phase = 'lobby' | 'playing' | 'placed' | 'reveal' | 'gameover';
 export interface RoomSettings {
   revealTimeoutSeconds: number;
   autoAdvanceSeconds: number | null;
+  autoAdvanceChallengeSeconds: number | null;
   maxCards: number | null;
 }
 
@@ -58,6 +59,7 @@ export interface Room {
   lastResult: LastResult | null;
   settings: RoomSettings;
   gameoverReason: GameoverReason;
+  challengerId: string | null;
   playlistLoading?: boolean;
 }
 
@@ -105,6 +107,11 @@ export interface GameState {
 }
 
 export interface MusicBrainzReleaseGroup {
+  'first-release-date'?: string | null;
+}
+
+export interface MusicBrainzReleaseGroupSearchResult {
+  score: number;
   'first-release-date'?: string | null;
 }
 

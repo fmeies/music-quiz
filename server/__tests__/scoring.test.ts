@@ -21,6 +21,8 @@ function makeRoom({
   phase?: Phase;
   round?: number;
 }): Room {
+  // Derive challengerId from the first player with challenged=true
+  const challengerEntry = Object.entries(players).find(([, p]) => p.challenged);
   return {
     players,
     currentPlayerId,
@@ -40,9 +42,11 @@ function makeRoom({
     settings: {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
+      autoAdvanceChallengeSeconds: null,
       maxCards: 10,
     },
     gameoverReason: null,
+    challengerId: challengerEntry ? challengerEntry[0] : null,
   };
 }
 

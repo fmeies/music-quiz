@@ -12,6 +12,7 @@ function makeSettings(overrides: Partial<RoomSettings> = {}): RoomSettings {
   return {
     revealTimeoutSeconds: 10,
     autoAdvanceSeconds: null,
+    autoAdvanceChallengeSeconds: null,
     maxCards: 10,
     ...overrides,
   };

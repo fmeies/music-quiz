@@ -1,5 +1,10 @@
 import { earliestYearFromRecordings } from './gameLogic';
-import type { Card, Room, MusicBrainzRecording } from './types';
+import type {
+  Card,
+  Room,
+  MusicBrainzRecording,
+  MusicBrainzReleaseGroupSearchResult,
+} from './types';
 import { log } from './log';
 
 export const ENRICH_TIMEOUT_MS = 5000;
@@ -24,42 +29,113 @@ export async function getSpotifyToken(): Promise<string> {
   return data.access_token;
 }
 
+const MB_HEADERS = {
+  'User-Agent': 'MusicQuiz/1.0 (+https://github.com/music-quiz-party-game)',
+};
+
+// Strip common suffixes that confuse MusicBrainz text search
+function normalizeTitle(title: string): string {
+  return title
+    .replace(/\s*[\-–]\s*([\d]{4}\s+)?remaster(ed)?(\s+version)?/gi, '')
+    .replace(/\s*\(([\d]{4}\s+)?remaster(ed)?(\s+version)?\)/gi, '')
+    .replace(/\s*\(radio edit\)/gi, '')
+    .replace(/\s*[\-–]\s*radio edit/gi, '')
+    .replace(/\s*\(single version\)/gi, '')
+    .replace(/\s*[\-–]\s*single version/gi, '')
+    .replace(/\s*\(album version\)/gi, '')
+    .replace(/\s*\(feat\..*?\)/gi, '')
+    .replace(/\s*ft\..*$/gi, '')
+    .trim();
+}
+
 export async function getMusicBrainzYear(
   title: string,
   artist: string
 ): Promise<{ year: number; via: string } | null> {
-  try {
-    const primaryArtist = artist.split(',')[0].trim();
-    log(
-      `[MusicBrainz] Lookup: title="${title}", artist="${artist}"${primaryArtist !== artist ? ` (using primary: "${primaryArtist}")` : ''}`
-    );
-    const query = `recording:"${title.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
-    log(`[MusicBrainz] Query: ${query}`);
-    const url = `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'MusicQuiz/1.0 (+https://github.com/music-quiz-party-game)',
-      },
-    });
-    log(
-      `[MusicBrainz] Response: ${res.status} for "${title}" / "${primaryArtist}"`
-    );
-    if (!res.ok) throw new Error(`MusicBrainz error: ${res.status}`);
-    const data = (await res.json()) as { recordings?: MusicBrainzRecording[] };
-    const total = data.recordings?.length ?? 0;
-    const qualified = (data.recordings || []).filter((r) => r.score >= 90);
-    log(
-      `[MusicBrainz] ${total} recordings returned, ${qualified.length} with score ≥ 90`
-    );
-    if (total > 0 && qualified.length === 0) {
-      const topScore = Math.max(...(data.recordings || []).map((r) => r.score));
-      log(`[MusicBrainz] Top score was ${topScore} (below threshold)`);
+  const primaryArtist = artist.split(',')[0].trim();
+  const normalizedTitle = normalizeTitle(title);
+
+  for (const [queryTitle, threshold, label] of [
+    [normalizedTitle, 90, 'normalized'],
+    [title, 90, 'original'],
+    [normalizedTitle, 75, 'normalized/fallback'],
+  ] as [string, number, string][]) {
+    try {
+      const query = `recording:"${queryTitle.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
+      log(`[MusicBrainz] Query (${label}, score≥${threshold}): ${query}`);
+      const url = `https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(query)}&fmt=json&limit=10&inc=release-groups+releases`;
+      const res = await fetch(url, { headers: MB_HEADERS });
+      if (!res.ok) throw new Error(`MusicBrainz error: ${res.status}`);
+      const data = (await res.json()) as {
+        recordings?: MusicBrainzRecording[];
+      };
+      const qualified = (data.recordings || []).filter(
+        (r) => r.score >= threshold
+      );
+      log(
+        `[MusicBrainz] ${data.recordings?.length ?? 0} recordings, ${qualified.length} with score ≥ ${threshold}`
+      );
+      const year = earliestYearFromRecordings(qualified);
+      if (year)
+        return {
+          year,
+          via: `search "${queryTitle}" / "${primaryArtist}" (${label})`,
+        };
+    } catch (err) {
+      log(`[MusicBrainz] Request failed (${label}) for "${queryTitle}":`, err);
     }
-    const year = earliestYearFromRecordings(qualified);
-    if (year) return { year, via: `search "${title}" / "${primaryArtist}"` };
-  } catch (err) {
-    log(`[MusicBrainz] Request failed for "${title}":`, err);
+    // Only try fallback queries if title changed or threshold changed
+    if (queryTitle === normalizedTitle && normalizedTitle === title) break;
+  }
+  return null;
+}
+
+export async function getMusicBrainzYearFromReleaseGroups(
+  title: string,
+  artist: string
+): Promise<{ year: number; via: string } | null> {
+  const primaryArtist = artist.split(',')[0].trim();
+  const normalizedTitle = normalizeTitle(title);
+
+  for (const [queryTitle, threshold, label] of [
+    [normalizedTitle, 90, 'normalized'],
+    [title, 90, 'original'],
+    [normalizedTitle, 75, 'normalized/fallback'],
+  ] as [string, number, string][]) {
+    try {
+      const query = `releasegroup:"${queryTitle.replace(/"/g, '')}" AND artist:"${primaryArtist.replace(/"/g, '')}"`;
+      log(`[MusicBrainz/RG] Query (${label}, score≥${threshold}): ${query}`);
+      const url = `https://musicbrainz.org/ws/2/release-group?query=${encodeURIComponent(query)}&fmt=json&limit=10`;
+      const res = await fetch(url, { headers: MB_HEADERS });
+      if (!res.ok) throw new Error(`MusicBrainz RG error: ${res.status}`);
+      const data = (await res.json()) as {
+        'release-groups'?: MusicBrainzReleaseGroupSearchResult[];
+      };
+      const qualified = (data['release-groups'] || []).filter(
+        (rg) => rg.score >= threshold
+      );
+      log(
+        `[MusicBrainz/RG] ${data['release-groups']?.length ?? 0} results, ${qualified.length} with score ≥ ${threshold}`
+      );
+      let earliest: number | null = null;
+      for (const rg of qualified) {
+        const y = rg['first-release-date']
+          ? parseInt(rg['first-release-date'])
+          : NaN;
+        if (!isNaN(y) && y > 1000 && (!earliest || y < earliest)) earliest = y;
+      }
+      if (earliest)
+        return {
+          year: earliest,
+          via: `release-group "${queryTitle}" / "${primaryArtist}" (${label})`,
+        };
+    } catch (err) {
+      log(
+        `[MusicBrainz/RG] Request failed (${label}) for "${queryTitle}":`,
+        err
+      );
+    }
+    if (queryTitle === normalizedTitle && normalizedTitle === title) break;
   }
   return null;
 }
@@ -116,8 +192,17 @@ export async function enrichCurrentCardYear(
   if (yearCache.has(track.trackId)) {
     mbYear = yearCache.get(track.trackId)!;
   } else {
-    const result = await getMusicBrainzYear(track.title, track.artist);
-    mbYear = result ? result.year : null;
+    const [recordingResult, rgResult] = await Promise.all([
+      getMusicBrainzYear(track.title, track.artist),
+      getMusicBrainzYearFromReleaseGroups(track.title, track.artist),
+    ]);
+    const years = [recordingResult?.year, rgResult?.year].filter(
+      (y): y is number => y !== undefined && y !== null
+    );
+    mbYear = years.length > 0 ? Math.min(...years) : null;
+    const via = [recordingResult?.via, rgResult?.via]
+      .filter(Boolean)
+      .join(' + ');
     if (yearCache.size >= MAX_YEAR_CACHE_SIZE) {
       const firstKey = yearCache.keys().next().value;
       if (firstKey !== undefined) yearCache.delete(firstKey);
@@ -126,7 +211,7 @@ export async function enrichCurrentCardYear(
     const spotifyYear = track.year;
     if (mbYear) {
       log(
-        `[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${mbYear} (via ${result!.via}) → ${Math.min(spotifyYear, mbYear)}`
+        `[Year] "${track.title}" – Spotify: ${spotifyYear}, MusicBrainz: ${mbYear} (via ${via}) → ${Math.min(spotifyYear, mbYear)}`
       );
     } else {
       log(

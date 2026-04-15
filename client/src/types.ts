@@ -3,6 +3,7 @@ export type Phase = 'lobby' | 'playing' | 'placed' | 'reveal' | 'gameover';
 export interface RoomSettings {
   revealTimeoutSeconds: number;
   autoAdvanceSeconds: number | null;
+  autoAdvanceChallengeSeconds: number | null;
   maxCards: number | null;
 }
 

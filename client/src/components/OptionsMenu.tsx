@@ -85,6 +85,44 @@ export default function OptionsMenu() {
             </div>
 
             <div className="option-row">
+              <label htmlFor="opt-auto-challenge">
+                Auto-advance after challenge
+              </label>
+              <div className="option-control">
+                <input
+                  id="opt-auto-challenge"
+                  type="checkbox"
+                  checked={s.autoAdvanceChallengeSeconds !== null}
+                  onChange={(e) =>
+                    set({
+                      autoAdvanceChallengeSeconds: e.target.checked ? 10 : null,
+                    })
+                  }
+                />
+                {s.autoAdvanceChallengeSeconds !== null && (
+                  <>
+                    <span>after</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={120}
+                      value={s.autoAdvanceChallengeSeconds}
+                      onChange={(e) =>
+                        set({
+                          autoAdvanceChallengeSeconds: Math.min(
+                            120,
+                            Math.max(1, parseInt(e.target.value) || 10)
+                          ),
+                        })
+                      }
+                    />
+                    <span>seconds</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="option-row">
               <label htmlFor="opt-cards">Card target</label>
               <div className="option-control">
                 <input

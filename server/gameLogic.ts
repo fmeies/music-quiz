@@ -54,6 +54,7 @@ export function defaultSettings(): RoomSettings {
   return {
     revealTimeoutSeconds: parseInt(process.env.REVEAL_TIMEOUT_SECONDS || '10'),
     autoAdvanceSeconds: 5,
+    autoAdvanceChallengeSeconds: 10,
     maxCards: 10,
   };
 }
@@ -79,6 +80,7 @@ export function createRoom(hostId: string, hostName: string): Room {
     lastResult: null,
     settings: defaultSettings(),
     gameoverReason: null,
+    challengerId: null,
   };
 }
 
@@ -185,9 +187,9 @@ export function applyReveal(room: Room): boolean {
   const next = activePlayer.timeline[cardIdx + 1];
   const correct = (!prev || prev.year <= year) && (!next || next.year >= year);
 
-  const challenger =
-    Object.values(room.players).find((p: InternalPlayer) => p.challenged) ??
-    null;
+  const challenger = room.challengerId
+    ? (room.players[room.challengerId] ?? null)
+    : null;
 
   if (correct) {
     activePlayer.score += 1;

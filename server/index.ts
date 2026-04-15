@@ -144,10 +144,14 @@ function triggerReveal(roomId: string): void {
     return;
   }
 
-  if (room.settings.autoAdvanceSeconds !== null) {
+  const wasChallenged = room.challengerId !== null;
+  const autoSecs = wasChallenged
+    ? room.settings.autoAdvanceChallengeSeconds
+    : room.settings.autoAdvanceSeconds;
+  if (autoSecs !== null) {
     autoAdvanceTimers[roomId] = setTimeout(
       () => triggerNextTurn(roomId),
-      room.settings.autoAdvanceSeconds * 1000
+      autoSecs * 1000
     );
   }
 
@@ -162,6 +166,7 @@ function startTurn(room: Room, roomId: string): boolean {
   room.phase = 'playing';
   room.currentCard = { ...track };
   room.usedTracks.add(track.trackId);
+  room.challengerId = null;
   Object.values(room.players).forEach((p) => {
     p.challenged = false;
   });
@@ -458,12 +463,11 @@ io.on('connection', (socket: Socket) => {
     const room = rooms[roomId];
     if (!room || room.phase !== 'placed') return;
     if (socket.data.playerId === room.currentPlayerId) return;
-    // Only the first challenger is accepted — once anyone has challenged, the
-    // reveal fires immediately and no further challenges are meaningful.
-    if (Object.values(room.players).some((p) => p.challenged)) return;
+    // Only the first challenger is accepted.
+    if (room.challengerId !== null) return;
 
+    room.challengerId = socket.data.playerId;
     room.players[socket.data.playerId].challenged = true;
-    io.to(roomId).emit('gameState', roomPublicState(room));
 
     // Cancel auto-reveal timer and reveal immediately
     clearRevealTimer(roomId);

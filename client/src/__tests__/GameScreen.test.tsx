@@ -49,6 +49,7 @@ function makeGameState(overrides: Partial<GameState> = {}): GameState {
     settings: {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
+      autoAdvanceChallengeSeconds: null,
       maxCards: 10,
     },
     gameoverReason: null,
@@ -316,6 +317,7 @@ describe('GameScreen — challenge countdown', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: null,
+            autoAdvanceChallengeSeconds: null,
             maxCards: 10,
           },
         }),
@@ -334,6 +336,7 @@ describe('GameScreen — challenge countdown', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: 5,
+            autoAdvanceChallengeSeconds: null,
             maxCards: 10,
           },
         }),
@@ -352,6 +355,7 @@ describe('GameScreen — challenge countdown', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: null,
+            autoAdvanceChallengeSeconds: null,
             maxCards: 10,
           },
         }),
@@ -387,6 +391,7 @@ describe('GameScreen — countdown ticking', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: null,
+            autoAdvanceChallengeSeconds: null,
             maxCards: 10,
           },
         }),
@@ -446,6 +451,7 @@ describe('GameScreen — gameover', () => {
           settings: {
             revealTimeoutSeconds: 10,
             autoAdvanceSeconds: null,
+            autoAdvanceChallengeSeconds: null,
             maxCards: 10,
           },
         }),

@@ -41,7 +41,12 @@ export default function GameScreen() {
   }, [phase, gameState?.currentPlayerId, gameState?.round]);
 
   useEffect(() => {
-    const autoSecs = gameState?.settings.autoAdvanceSeconds;
+    const wasChallenged =
+      gameState?.lastResult?.challenger !== null &&
+      gameState?.lastResult?.challenger !== undefined;
+    const autoSecs = wasChallenged
+      ? gameState?.settings.autoAdvanceChallengeSeconds
+      : gameState?.settings.autoAdvanceSeconds;
     if (
       phase === 'reveal' &&
       autoSecs !== null &&
