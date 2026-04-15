@@ -29,11 +29,13 @@ In dev, Vite's built-in proxy (configured in `vite.config.ts`) forwards `/verify
 ## Production (Docker)
 
 ```bash
-docker compose up -d           # start both services
-docker compose up -d --build   # rebuild after code changes
-docker compose logs -f         # follow logs
-docker compose down            # stop
+docker compose up -d                          # start both services
+docker compose down && docker compose build --no-cache && docker compose up -d  # deploy after git pull
+docker compose logs -f                        # follow logs
+docker compose down                           # stop
 ```
+
+> **Note:** Use `build --no-cache` (not just `up -d --build`) for deployments. Without `--no-cache`, Docker may reuse stale cached layers even after source changes.
 
 ## Environment
 
