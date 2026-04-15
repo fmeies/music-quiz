@@ -70,7 +70,7 @@ Phases cycle through: `lobby` → `playing` → `placed` → `reveal` → back t
 **Challenging:** Only the first player to click Challenge is accepted. This triggers an immediate reveal — the countdown collapses instantly.
 
 **Gameover** — triggered by one of three reasons (`gameoverReason`):
-- `'rounds'` — round limit reached; host can choose to continue playing (removes the limit)
+- `'cards'` — a player reached the card target; host can choose to continue playing (removes the limit)
 - `'no_tracks'` — all songs in the playlist have been played
 - `'no_players'` — all players disconnected
 
@@ -81,8 +81,9 @@ Settings persist as defaults for subsequently created rooms (`globalDefaultSetti
 | Option | Default | Range |
 |---|---|---|
 | Challenge window (`revealTimeoutSeconds`) | 10 s | 1–60 s |
-| Auto-advance after reveal (`autoAdvanceSeconds`) | off | 1–120 s or null |
-| Round limit (`maxRounds`) | 10 | 1–999 or null (unlimited) |
+| Auto-advance after reveal (`autoAdvanceSeconds`) | 5 s | 1–120 s or null |
+| Auto-advance after challenge (`autoAdvanceChallengeSeconds`) | 10 s | 1–120 s or null |
+| Card target (`maxCards`) | 10 | 2–999 or null (unlimited) |
 
 ## Key Files
 
@@ -99,7 +100,7 @@ Settings persist as defaults for subsequently created rooms (`globalDefaultSetti
 | `client/src/components/GameScreen.tsx` | Main game UI, phase rendering, countdowns |
 | `client/src/components/Timeline.tsx` | Card placement with drop zones |
 | `client/src/components/NowPlaying.tsx` | Current song display + Spotify playback controls |
-| `client/src/components/OptionsMenu.tsx` | In-game settings modal (challenge window, auto-advance, round limit) |
+| `client/src/components/OptionsMenu.tsx` | In-game settings modal (challenge window, auto-advance, auto-advance after challenge, card target) |
 | `client/src/components/ErrorBoundary.tsx` | React error boundary fallback |
 
 ## Testing & Tooling
