@@ -413,30 +413,26 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 15px; }
 .modal .btn-primary { align-self: flex-end; }
 
 .option-row {
-  display: grid;
-  grid-template-columns: 1fr 20px 36px auto;
-  align-items: center;
-  gap: 8px;
+  display: flex; align-items: center; gap: 12px;
 }
-.option-row label { font-size: 14px; font-weight: 600; }
-.option-after { font-size: 13px; color: var(--muted); text-align: right; }
+.option-row label { font-size: 14px; font-weight: 600; flex: 0 0 150px; }
 
-.option-value {
+.option-control {
   display: flex; align-items: center; gap: 8px;
+  flex: 1; justify-content: flex-end;
 }
-.option-value input[type='number'] {
+.option-control input[type='number'] {
   background: var(--surface2); color: var(--text);
   border: 2px solid #333; border-radius: 8px;
   padding: 6px 10px; font-size: 14px; width: 70px;
   text-align: center; outline: none;
   transition: border-color .2s;
 }
-.option-value input[type='number']:focus { border-color: var(--accent); }
-.option-row input[type='checkbox'] {
+.option-control input[type='number']:focus { border-color: var(--accent); }
+.option-control input[type='checkbox'] {
   width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);
-  justify-self: center;
 }
-.option-value span { font-size: 13px; color: var(--muted); }
+.option-control span { font-size: 13px; color: var(--muted); }
 
 /* ── Lobby actions row (start + gear) ─────────────────────── */
 .lobby-actions-row {
@@ -518,7 +514,8 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 15px; }
   .drop-zone { min-width: 24px; padding: 6px 4px; font-size: 13px; }
 
   .modal { padding: 20px; min-width: unset; }
-  .option-row { grid-template-columns: 1fr 20px 32px auto; }
+  .option-row { flex-wrap: wrap; }
+  .option-row label { flex: 1 1 100%; }
 
   .lobby-actions-row .btn-options { width: 48px; }
   .btn-continue { font-size: 14px; padding: 10px 20px; }
