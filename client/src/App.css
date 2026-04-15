@@ -416,7 +416,7 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: 15px; }
   display: flex; align-items: center;
   justify-content: space-between; gap: 12px;
 }
-.option-row label { font-size: 14px; font-weight: 600; }
+.option-row label { font-size: 14px; font-weight: 600; flex: 0 0 160px; }
 
 .option-control {
   display: flex; align-items: center; gap: 8px;
