@@ -30,7 +30,9 @@ export default function OptionsMenu() {
 
             <div className="option-row">
               <label htmlFor="opt-reveal">Challenge window</label>
-              <div className="option-control">
+              <span />
+              <span />
+              <div className="option-value">
                 <input
                   id="opt-reveal"
                   type="number"
@@ -52,18 +54,20 @@ export default function OptionsMenu() {
 
             <div className="option-row">
               <label htmlFor="opt-auto">Auto-advance</label>
-              <div className="option-control">
-                <input
-                  id="opt-auto"
-                  type="checkbox"
-                  checked={s.autoAdvanceSeconds !== null}
-                  onChange={(e) =>
-                    set({ autoAdvanceSeconds: e.target.checked ? 5 : null })
-                  }
-                />
+              <input
+                id="opt-auto"
+                type="checkbox"
+                checked={s.autoAdvanceSeconds !== null}
+                onChange={(e) =>
+                  set({ autoAdvanceSeconds: e.target.checked ? 5 : null })
+                }
+              />
+              <span className="option-after">
+                {s.autoAdvanceSeconds !== null ? 'after' : ''}
+              </span>
+              <div className="option-value">
                 {s.autoAdvanceSeconds !== null && (
                   <>
-                    <span>after</span>
                     <input
                       type="number"
                       min={1}
@@ -88,20 +92,22 @@ export default function OptionsMenu() {
               <label htmlFor="opt-auto-challenge">
                 Auto-advance after challenge
               </label>
-              <div className="option-control">
-                <input
-                  id="opt-auto-challenge"
-                  type="checkbox"
-                  checked={s.autoAdvanceChallengeSeconds !== null}
-                  onChange={(e) =>
-                    set({
-                      autoAdvanceChallengeSeconds: e.target.checked ? 10 : null,
-                    })
-                  }
-                />
+              <input
+                id="opt-auto-challenge"
+                type="checkbox"
+                checked={s.autoAdvanceChallengeSeconds !== null}
+                onChange={(e) =>
+                  set({
+                    autoAdvanceChallengeSeconds: e.target.checked ? 10 : null,
+                  })
+                }
+              />
+              <span className="option-after">
+                {s.autoAdvanceChallengeSeconds !== null ? 'after' : ''}
+              </span>
+              <div className="option-value">
                 {s.autoAdvanceChallengeSeconds !== null && (
                   <>
-                    <span>after</span>
                     <input
                       type="number"
                       min={1}
@@ -124,15 +130,16 @@ export default function OptionsMenu() {
 
             <div className="option-row">
               <label htmlFor="opt-cards">Card target</label>
-              <div className="option-control">
-                <input
-                  id="opt-cards"
-                  type="checkbox"
-                  checked={s.maxCards !== null}
-                  onChange={(e) =>
-                    set({ maxCards: e.target.checked ? 10 : null })
-                  }
-                />
+              <input
+                id="opt-cards"
+                type="checkbox"
+                checked={s.maxCards !== null}
+                onChange={(e) =>
+                  set({ maxCards: e.target.checked ? 10 : null })
+                }
+              />
+              <span />
+              <div className="option-value">
                 {s.maxCards !== null && (
                   <>
                     <input
