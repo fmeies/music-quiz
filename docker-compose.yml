@@ -3,7 +3,7 @@ services:
     build: ./server
     env_file: ./server/.env
     ports:
-      - "3011:3011"
+      - "127.0.0.1:3011:3011"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3011/verify?code=_', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
@@ -15,7 +15,7 @@ services:
   client:
     build: ./client
     ports:
-      - "3010:3010"
+      - "127.0.0.1:3010:3010"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3010/"]
