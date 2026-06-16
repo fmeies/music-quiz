@@ -357,6 +357,7 @@ describe('checkGameover', () => {
     room.settings = {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
+      autoAdvanceChallengeSeconds: null,
       maxCards,
     };
     return room;

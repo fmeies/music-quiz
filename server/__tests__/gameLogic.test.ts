@@ -60,6 +60,7 @@ describe('roomPublicState', () => {
     phase: 'lobby',
     round: 0,
     currentPlayerId: null,
+    challengerId: null,
     currentCard: null,
     playlist: null,
     lastResult: null,
@@ -73,6 +74,7 @@ describe('roomPublicState', () => {
     settings: {
       revealTimeoutSeconds: 10,
       autoAdvanceSeconds: null,
+      autoAdvanceChallengeSeconds: null,
       maxCards: 10,
     },
     gameoverReason: null,
