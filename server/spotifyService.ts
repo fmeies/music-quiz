@@ -11,24 +11,6 @@ export const ENRICH_TIMEOUT_MS = 5000;
 const MAX_YEAR_CACHE_SIZE = 500;
 export const yearCache = new Map<string, number | null>();
 
-export async function getSpotifyToken(): Promise<string> {
-  const { SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET } = process.env;
-  const creds = Buffer.from(
-    `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`
-  ).toString('base64');
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${creds}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-  if (!res.ok) throw new Error(`Spotify token error: ${res.status}`);
-  const data = (await res.json()) as { access_token: string };
-  return data.access_token;
-}
-
 const MB_HEADERS = {
   'User-Agent': 'MusicQuiz/1.0 (+https://github.com/music-quiz-party-game)',
 };
@@ -140,42 +122,51 @@ export async function getMusicBrainzYearFromReleaseGroups(
   return null;
 }
 
+type SpotifyTrack = {
+  id: string;
+  name: string;
+  artists: Array<{ name: string }>;
+  album: {
+    release_date?: string;
+    images?: Array<{ url: string }>;
+  };
+};
+
+// Spotify's Feb/Mar 2026 migration replaced GET /playlists/{id}/tracks with
+// /items and renamed the per-entry field from `track` to `item`; accept either.
+type PlaylistItem = { item?: SpotifyTrack | null; track?: SpotifyTrack | null };
+
+function trackOf(entry: PlaylistItem): SpotifyTrack | null {
+  return entry.item ?? entry.track ?? null;
+}
+
 export async function getPlaylistTracks(
   playlistId: string,
   token: string
 ): Promise<Card[]> {
   let tracks: Card[] = [];
   let url: string | null =
-    `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`;
+    `https://api.spotify.com/v1/playlists/${playlistId}/items?limit=100`;
   while (url) {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error(`Spotify playlist error: ${res.status}`);
     const data = (await res.json()) as {
-      items: {
-        track: {
-          id: string;
-          name: string;
-          artists: Array<{ name: string }>;
-          album: {
-            release_date?: string;
-            images?: Array<{ url: string }>;
-          };
-        } | null;
-      }[];
+      items: PlaylistItem[];
       next: string | null;
     };
     tracks = tracks.concat(
       data.items
-        .filter((i) => i.track && i.track.album?.release_date)
+        .map(trackOf)
+        .filter((t): t is SpotifyTrack => t !== null && !!t.album?.release_date)
         .map(
-          (i): Card => ({
-            trackId: i.track!.id,
-            title: i.track!.name,
-            artist: i.track!.artists.map((a) => a.name).join(', '),
-            year: parseInt(i.track!.album.release_date!.substring(0, 4)),
-            albumArt: i.track!.album.images?.[1]?.url || null,
+          (t): Card => ({
+            trackId: t.id,
+            title: t.name,
+            artist: t.artists.map((a) => a.name).join(', '),
+            year: parseInt(t.album.release_date!.substring(0, 4)),
+            albumArt: t.album.images?.[1]?.url || null,
           })
         )
     );
