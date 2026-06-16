@@ -182,7 +182,6 @@ describe('roomPublicState', () => {
   });
 
   it('uses default revealTimeoutSeconds of 10', () => {
-    delete process.env.REVEAL_TIMEOUT_SECONDS;
     const state = roomPublicState(baseRoom());
     expect(state.settings.revealTimeoutSeconds).toBe(10);
   });
