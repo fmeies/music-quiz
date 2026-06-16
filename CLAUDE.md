@@ -50,7 +50,7 @@ docker compose down                           # stop
 | `APP_URL` | Full app URL used for Socket.io CORS (e.g. `https://your-domain.com`) |
 | `APP_CODE` | Access gate code — validated client-side (CodeGate) **and** server-side (Socket.io middleware) |
 | `PLAYLIST_N_NAME` | Display name for preset playlist N (e.g. `PLAYLIST_1_NAME`) |
-| `PLAYLIST_N_URL` | Spotify URL for preset playlist N (e.g. `PLAYLIST_1_URL`) |
+| `PLAYLIST_N_URL` | Spotify URL for preset playlist N (e.g. `PLAYLIST_1_URL`). **Must be a playlist the connecting host owns or collaborates on** — see the playlist-loading gotcha below. |
 
 **`client/.env`** — copy from `client/.env.example`. Used at build time by Vite:
 
@@ -133,7 +133,7 @@ npm run format:check  # Prettier (check only, used in CI)
 - **HTTPS required** in production (Spotify SDK constraint)
 - `VITE_BASE_PATH` in `client/.env` controls the asset base path; `import.meta.env.BASE_URL` is `/music-quiz/` in prod and `/` in dev. The value is baked in at build time — a rebuild is required to change it. **Changing `VITE_BASE_PATH` requires updating the reverse-proxy config in lockstep** (all `ProxyPass /music-quiz/…` rules in Apache, or equivalent in nginx/Caddy).
 - `APP_CODE` is enforced both in the browser (CodeGate component) and on the server (Socket.io `io.use()` middleware). A socket connection without the correct code is rejected before any event handler runs.
-- Playlist loading uses server-side Spotify Client Credentials (no user login needed); only audio playback requires the user OAuth token.
+- **Playlist loading requires the host's connected Spotify (user OAuth token).** Spotify's Feb/Mar 2026 API migration removed `GET /playlists/{id}/tracks` (now 403) in favour of `GET /playlists/{id}/items`, which only returns contents to a user token and **only for playlists that user owns or collaborates on**. App-only Client-Credentials tokens get 401, so loading fails until the host clicks "Connect Spotify". Preset playlists (`PLAYLIST_N_URL`) therefore only work if the host owns/collaborates on them — to use a third-party playlist (e.g. an official HITSTER list), duplicate it into the host's own account and point the URL at the copy. See the [Feb 2026 migration guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide).
 - Only the **first** player to challenge is accepted per turn; subsequent challenge attempts in the same turn are silently rejected.
 - Challenging immediately triggers reveal (challenge window collapses to 0 s).
 - The host must press "Next →" to advance turns, unless auto-advance is enabled in the options.
