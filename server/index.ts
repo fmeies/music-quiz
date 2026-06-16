@@ -17,7 +17,6 @@ import {
   checkGameover,
 } from './gameLogic';
 import {
-  getSpotifyToken,
   getPlaylistTracks,
   enrichCurrentCardYear,
   ENRICH_TIMEOUT_MS,
@@ -233,9 +232,10 @@ app.get('/auth/spotify/url', (req, res) => {
   room.oauthState = oauthState;
 
   const { SPOTIFY_CLIENT_ID, REDIRECT_URI } = process.env;
-  // user-read-private + user-read-email are required by the Web Playback SDK to verify Spotify Premium
+  // user-read-private + user-read-email are required by the Web Playback SDK to verify Spotify Premium.
+  // playlist-read-* let the user token read playlist contents (own/collaborative) via the /items endpoint.
   const scopes =
-    'streaming user-read-playback-state user-modify-playback-state user-read-private user-read-email';
+    'streaming user-read-playback-state user-modify-playback-state user-read-private user-read-email playlist-read-private playlist-read-collaborative';
   const url = `https://accounts.spotify.com/authorize?response_type=code&client_id=${SPOTIFY_CLIENT_ID}&scope=${encodeURIComponent(scopes)}&redirect_uri=${encodeURIComponent(REDIRECT_URI!)}&state=${oauthState}`;
   res.json({ url });
 });
@@ -381,16 +381,27 @@ io.on('connection', (socket: Socket) => {
       const match = playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
       if (!match) return socket.emit('error', 'Invalid playlist URL');
 
+      // Since Spotify's Feb/Mar 2026 API migration, playlist contents are only
+      // returned via the /items endpoint to a user token, and only for
+      // playlists that user owns or collaborates on. App-only tokens get 401.
+      if (!room.spotifyToken)
+        return socket.emit(
+          'error',
+          'Please connect Spotify before loading a playlist'
+        );
+
       room.playlistLoading = true;
       try {
-        const token = await getSpotifyToken();
-        const tracks = await getPlaylistTracks(match[1], token);
+        log(`[Playlist] Loading ${match[1]}`);
+        const tracks = await getPlaylistTracks(match[1], room.spotifyToken);
         if (!tracks.length)
           return socket.emit('error', 'No tracks found in playlist');
 
         room.playlist = { id: match[1], tracks };
+        log(`[Playlist] Loaded ${tracks.length} tracks from ${match[1]}`);
         io.to(roomId).emit('gameState', roomPublicState(room));
       } catch (e) {
+        log(`[Playlist] Failed to load ${match[1]}:`, (e as Error).message);
         socket.emit(
           'error',
           'Failed to load playlist: ' + (e as Error).message
