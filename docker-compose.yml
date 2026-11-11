@@ -1,6 +1,8 @@
+# Pull-only on purpose: without build, a failed pull errors out instead of silently
+# falling back to a slow local build. To test local changes, see README.
 services:
   server:
-    build: ./server
+    image: ghcr.io/fmeies/music-quiz-server:latest
     env_file: ./server/.env
     ports:
       - "127.0.0.1:3011:3011"
@@ -13,7 +15,7 @@ services:
       start_period: 10s
 
   client:
-    build: ./client
+    image: ghcr.io/fmeies/music-quiz-client:latest
     ports:
       - "127.0.0.1:3010:3010"
     restart: unless-stopped

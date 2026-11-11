@@ -1,8 +1,10 @@
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+# Baked in at build time; empty falls back to the vite.config.ts default (/music-quiz/)
+ARG VITE_BASE_PATH
 RUN npm run build
 
 FROM nginx:alpine
