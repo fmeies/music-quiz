@@ -49,19 +49,17 @@ PLAYLIST_1_NAME=My Playlist
 PLAYLIST_1_URL=https://open.spotify.com/playlist/xxx
 ```
 
-Edit `client/.env` (only needed if you deploy under a different URL path):
-
-```
-VITE_BASE_PATH=/music-quiz/
-```
+The published client image is built for the URL path `/music-quiz/`. To serve it under a different path, build the client image yourself: `docker build --build-arg VITE_BASE_PATH=/other-path/ -t ghcr.io/fmeies/music-quiz-client:latest client`, then `docker compose up -d --pull never`.
 
 > **Note:** If you change `VITE_BASE_PATH`, update all reverse-proxy rules to match (the `ProxyPass /music-quiz/…` lines in the Apache example below).
 
 ### 3. Deploy
 
 ```bash
-docker compose up -d
+docker compose pull && docker compose up -d
 ```
+
+Every push to `main` publishes `ghcr.io/fmeies/music-quiz-server:latest` and `ghcr.io/fmeies/music-quiz-client:latest` (linux/amd64) after CI passes, plus `sha-<commit>` tags. Git tags `vX.Y.Z` publish matching version tags.
 
 ### 4. Configure your reverse proxy (Apache example)
 
@@ -90,7 +88,12 @@ The app will be available at `https://your-domain.com/music-quiz`.
 docker compose logs -f          # Follow logs
 docker compose restart          # Restart containers
 docker compose down             # Stop
-docker compose up -d --build    # Rebuild after code changes
+docker compose pull && docker compose up -d   # Deploy the latest images
+
+# Testing local changes: build under the same tags, then start without pulling
+docker build -t ghcr.io/fmeies/music-quiz-server:latest server
+docker build -t ghcr.io/fmeies/music-quiz-client:latest client
+docker compose up -d --pull never
 ```
 
 ## Project structure

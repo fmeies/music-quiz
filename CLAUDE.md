@@ -29,13 +29,12 @@ In dev, Vite's built-in proxy (configured in `vite.config.ts`) forwards `/verify
 ## Production (Docker)
 
 ```bash
-docker compose up -d                          # start both services
-docker compose down && docker compose build --no-cache && docker compose up -d  # deploy after git pull
+docker compose pull && docker compose up -d   # deploy the latest images
 docker compose logs -f                        # follow logs
 docker compose down                           # stop
 ```
 
-> **Note:** Use `build --no-cache` (not just `up -d --build`) for deployments. Without `--no-cache`, Docker may reuse stale cached layers even after source changes.
+`.github/workflows/docker.yml` publishes `ghcr.io/fmeies/music-quiz-server` and `ghcr.io/fmeies/music-quiz-client` (linux/amd64; `latest`, `sha-*`, semver on `v*` tags) on pushes to `main`, only after `ci.yml` passes (reused via `workflow_call`). Compose is pull-only (no `build:`), so a failed pull fails loudly instead of triggering a slow local build on the server. The client image is built for the base path `/music-quiz/` (the `vite.config.ts` default).
 
 ## Environment
 
