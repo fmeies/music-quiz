@@ -83,6 +83,13 @@ export function useSpotifyPlayer(
         console.error('SDK account error:', message);
         setSdkError('Account error (Spotify Premium required): ' + message);
       });
+      // Safari blocks audio not started from a click; without this the track stays silent with no error
+      player.addListener('autoplay_failed', () => {
+        console.warn('SDK autoplay blocked by the browser');
+        setSdkError(
+          'Your browser blocked playback. Press Play to start the track.'
+        );
+      });
 
       player.connect();
       playerRef.current = player;
@@ -176,6 +183,9 @@ export function useSpotifyPlayer(
 
   const togglePlay = async () => {
     if (!deviceId || !spotifyToken || !card) return;
+    // Must run synchronously inside the click, before any await: browsers with strict autoplay
+    // rules (Safari) only unlock the SDK's audio element during the user gesture itself
+    void playerRef.current?.activateElement();
     if (playing) {
       playerRef.current?.pause();
     } else {
