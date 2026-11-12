@@ -13,14 +13,18 @@ export default function JoinScreen() {
 
   useEffect(() => {
     fetch(`${BASE}/rooms/single`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(({ roomId }: { roomId: string | null }) => {
         if (roomId) {
           setCode(roomId);
           setMode('join');
         }
       })
-      .catch(() => {});
+      // Pre-filling the room code is a convenience; joining manually still works
+      .catch((e) => console.warn('Room code lookup failed:', e));
   }, []);
 
   const handleCreate = async () => {

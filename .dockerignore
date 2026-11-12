@@ -1,0 +1,6 @@
+# The build context is the whole repo: keep secrets, local builds and git metadata out of it
+**/.env
+**/node_modules
+**/dist
+.git
+.github

@@ -7,8 +7,10 @@ Music quiz party game inspired by Hitster. Players listen to Spotify tracks and 
 ## Architecture
 
 **Two-service app:**
-- `client/` — React 18 SPA built with Vite + TypeScript (port 3010 in dev, served via nginx in prod)
+- `client/` — React 18 SPA built with Vite + TypeScript (Vite dev server on port 3010 in dev)
 - `server/` — Node.js + Express + Socket.io game server, written in TypeScript, compiled to CommonJS (port 3011)
+
+In production both ship as **one Docker image**: the root `Dockerfile` builds the client and Express serves it (`server/staticClient.ts`, registered after the API routes) from the same origin as REST and Socket.io.
 
 **Language:** The entire codebase is TypeScript. Server compiles via `tsc` to `dist/`; client is transpiled at build time by Vite. Shared type contracts live in `server/types.ts` and `client/src/types.ts`.
 
@@ -29,12 +31,12 @@ In dev, Vite's built-in proxy (configured in `vite.config.ts`) forwards `/verify
 ## Production (Docker)
 
 ```bash
-docker compose pull && docker compose up -d   # deploy the latest images
+docker compose pull && docker compose up -d   # deploy the latest image
 docker compose logs -f                        # follow logs
 docker compose down                           # stop
 ```
 
-`.github/workflows/docker.yml` publishes `ghcr.io/fmeies/music-quiz-server` and `ghcr.io/fmeies/music-quiz-client` (linux/amd64; `latest`, `sha-*`, semver on `v*` tags) on pushes to `main`, only after `ci.yml` passes (reused via `workflow_call`). Compose is pull-only (no `build:`), so a failed pull fails loudly instead of triggering a slow local build on the server. The client image is built for the base path `/music-quiz/` (the `vite.config.ts` default).
+`.github/workflows/docker.yml` publishes `ghcr.io/fmeies/music-quiz` (linux/amd64; `latest`, `sha-*`, semver on `v*` tags) on pushes to `main`, only after `ci.yml` passes (reused via `workflow_call`). Compose is pull-only (no `build:`), so a failed pull fails loudly instead of triggering a slow local build on the server. The image is built for the base path `/music-quiz/` (the `vite.config.ts` default).
 
 ## Environment
 
@@ -92,6 +94,7 @@ Settings persist as defaults for subsequently created rooms (`globalDefaultSetti
 |---|---|
 | `server/index.ts` | Express app, Socket.io event handlers, Spotify OAuth, timer management |
 | `server/gameLogic.ts` | Pure game logic — `createRoom`, `applyReveal`, `advanceTurn`, `checkGameover`, `pickRandomTrack`, `makeRateLimiter` |
+| `server/staticClient.ts` | Serves the built client in production; fails at startup if the build is missing |
 | `server/spotifyService.ts` | Spotify & MusicBrainz API calls; `yearCache` (capped at 500 entries) |
 | `server/types.ts` | Shared server-side TypeScript types (`Room`, `InternalPlayer`, `GameState`, `RoomSettings`, `GameoverReason`, …) |
 | `client/src/context/GameContext.tsx` | Socket.io client, shared game state, action dispatchers |
@@ -120,6 +123,7 @@ npm run format:check  # Prettier (check only, used in CI)
 - `scoring.test.ts` — `applyReveal`, `advanceTurn`, `checkGameover`
 - `api.test.ts` — REST endpoint integration tests
 - `socket.test.ts` — Socket.io integration tests (auth, createRoom, joinRoom, updateSettings)
+- `staticClient.test.ts` — serving the client build, route precedence, missing-build failure
 
 **Client** — Vitest + Testing Library. Tests live in `client/src/__tests__/`:
 - `GameContext.test.tsx`, `GameScreen.test.tsx`, `Timeline.test.tsx`, `CodeGate.test.tsx`, `OptionsMenu.test.tsx`
@@ -130,7 +134,7 @@ npm run format:check  # Prettier (check only, used in CI)
 
 - **Spotify Premium required** for Web Playback SDK (full track playback)
 - **HTTPS required** in production (Spotify SDK constraint)
-- `VITE_BASE_PATH` in `client/.env` controls the asset base path; `import.meta.env.BASE_URL` is `/music-quiz/` in prod and `/` in dev. The value is baked in at build time — a rebuild is required to change it. **Changing `VITE_BASE_PATH` requires updating the reverse-proxy config in lockstep** (all `ProxyPass /music-quiz/…` rules in Apache, or equivalent in nginx/Caddy).
+- `VITE_BASE_PATH` in `client/.env` controls the asset base path; `import.meta.env.BASE_URL` is `/music-quiz/` in prod and `/` in dev. The value is baked in at build time — a rebuild is required to change it. **Changing `VITE_BASE_PATH` requires updating the reverse-proxy config in lockstep** (the `ProxyPass /music-quiz/` rule in Apache, or equivalent in nginx/Caddy). The server itself is base-path agnostic: the proxy strips the prefix.
 - `APP_CODE` is enforced both in the browser (CodeGate component) and on the server (Socket.io `io.use()` middleware). A socket connection without the correct code is rejected before any event handler runs.
 - **Playlist loading requires the host's connected Spotify (user OAuth token).** Spotify's Feb/Mar 2026 API migration removed `GET /playlists/{id}/tracks` (now 403) in favour of `GET /playlists/{id}/items`, which only returns contents to a user token and **only for playlists that user owns or collaborates on**. App-only Client-Credentials tokens get 401, so loading fails until the host clicks "Connect Spotify". Preset playlists (`PLAYLIST_N_URL`) therefore only work if the host owns/collaborates on them — to use a third-party playlist (e.g. an official HITSTER list), duplicate it into the host's own account and point the URL at the copy. See the [Feb 2026 migration guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide).
 - Only the **first** player to challenge is accepted per turn; subsequent challenge attempts in the same turn are silently rejected.

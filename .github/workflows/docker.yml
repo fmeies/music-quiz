@@ -18,9 +18,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        component: [server, client]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -38,7 +35,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}-${{ matrix.component }}
+          images: ghcr.io/${{ github.repository }}
           # latest = newest main; vX.Y.Z tags give pinnable versions; sha-* traces an image to its commit
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
@@ -47,11 +44,10 @@ jobs:
 
       - uses: docker/build-push-action@v7
         with:
-          context: ./${{ matrix.component }}
+          context: .
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Separate cache scopes, so the two images don't evict each other's layers
-          cache-from: type=gha,scope=${{ matrix.component }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
