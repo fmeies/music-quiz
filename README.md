@@ -49,9 +49,9 @@ PLAYLIST_1_NAME=My Playlist
 PLAYLIST_1_URL=https://open.spotify.com/playlist/xxx
 ```
 
-The published client image is built for the URL path `/music-quiz/`. To serve it under a different path, build the client image yourself: `docker build --build-arg VITE_BASE_PATH=/other-path/ -t ghcr.io/fmeies/music-quiz-client:latest client`, then `docker compose up -d --pull never`.
+The published image is built for the URL path `/music-quiz/`. To serve it under a different path, build the image yourself: `docker build --build-arg VITE_BASE_PATH=/other-path/ -t ghcr.io/fmeies/music-quiz:latest .`, then `docker compose up -d --pull never`.
 
-> **Note:** If you change `VITE_BASE_PATH`, update all reverse-proxy rules to match (the `ProxyPass /music-quiz/…` lines in the Apache example below).
+> **Note:** If you change `VITE_BASE_PATH`, update the reverse-proxy rule to match (the `ProxyPass /music-quiz/` lines in the Apache example below).
 
 ### 3. Deploy
 
@@ -59,25 +59,15 @@ The published client image is built for the URL path `/music-quiz/`. To serve it
 docker compose pull && docker compose up -d
 ```
 
-Every push to `main` publishes `ghcr.io/fmeies/music-quiz-server:latest` and `ghcr.io/fmeies/music-quiz-client:latest` (linux/amd64) after CI passes, plus `sha-<commit>` tags. Git tags `vX.Y.Z` publish matching version tags.
+Every push to `main` publishes `ghcr.io/fmeies/music-quiz:latest` (linux/amd64), a single image that serves the UI, REST API and Socket.io, after CI passes, plus `sha-<commit>` tags. Git tags `vX.Y.Z` publish matching version tags.
 
 ### 4. Configure your reverse proxy (Apache example)
 
 ```apache
-ProxyPass /music-quiz/socket.io/ http://localhost:3011/socket.io/
-ProxyPassReverse /music-quiz/socket.io/ http://localhost:3011/socket.io/
-RewriteEngine On
-RewriteCond %{HTTP:Upgrade} websocket [NC]
-RewriteCond %{HTTP:Connection} upgrade [NC]
-RewriteRule ^/music-quiz/socket.io/(.*) ws://localhost:3011/socket.io/$1 [P,L]
-
-ProxyPass /music-quiz/auth/ http://localhost:3011/auth/
-ProxyPassReverse /music-quiz/auth/ http://localhost:3011/auth/
-ProxyPass /music-quiz/verify http://localhost:3011/verify
-ProxyPassReverse /music-quiz/verify http://localhost:3011/verify
-
-ProxyPass /music-quiz/ http://localhost:3010/
-ProxyPassReverse /music-quiz/ http://localhost:3010/
+ProxyPreserveHost On
+# One rule for UI, REST and Socket.io; upgrade=websocket needs Apache 2.4.47+
+ProxyPass        /music-quiz/ http://localhost:3011/ upgrade=websocket
+ProxyPassReverse /music-quiz/ http://localhost:3011/
 ```
 
 The app will be available at `https://your-domain.com/music-quiz`.
@@ -86,13 +76,12 @@ The app will be available at `https://your-domain.com/music-quiz`.
 
 ```bash
 docker compose logs -f          # Follow logs
-docker compose restart          # Restart containers
+docker compose restart          # Restart the container
 docker compose down             # Stop
 docker compose pull && docker compose up -d   # Deploy the latest images
 
-# Testing local changes: build under the same tags, then start without pulling
-docker build -t ghcr.io/fmeies/music-quiz-server:latest server
-docker build -t ghcr.io/fmeies/music-quiz-client:latest client
+# Testing local changes: build under the same tag, then start without pulling
+docker build -t ghcr.io/fmeies/music-quiz:latest .
 docker compose up -d --pull never
 ```
 
@@ -103,6 +92,7 @@ music-quiz/
 ├── server/
 │   ├── index.ts              # Express + Socket.io + Spotify OAuth, timer management
 │   ├── gameLogic.ts          # Pure game logic (tested independently)
+│   ├── staticClient.ts       # Serves the built client in production
 │   ├── spotifyService.ts     # Spotify & MusicBrainz API calls, year cache
 │   ├── types.ts              # Shared server-side TypeScript types
 │   ├── __tests__/            # Vitest tests
@@ -129,6 +119,7 @@ music-quiz/
 │           ├── Timeline.tsx          # Player's card timeline
 │           ├── OptionsMenu.tsx       # In-game settings modal
 │           └── ErrorBoundary.tsx     # React error boundary
+├── Dockerfile                # Single image: builds the client, serves it from Express
 ├── docker-compose.yml
 └── package.json
 ```

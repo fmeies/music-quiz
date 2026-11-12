@@ -21,6 +21,7 @@ import {
   enrichCurrentCardYear,
   ENRICH_TIMEOUT_MS,
 } from './spotifyService';
+import { serveClient, CLIENT_BUILD_DIR } from './staticClient';
 import type { RoomSettings } from './types';
 import type { Room } from './types';
 
@@ -248,6 +249,10 @@ app.get('/rooms/single', (_req, res) => {
 app.get('/verify', (req, res) => {
   const { code } = req.query as { code?: string };
   res.json({ ok: code === process.env.APP_CODE });
+});
+
+serveClient(app, CLIENT_BUILD_DIR, {
+  required: process.env.NODE_ENV === 'production',
 });
 
 // ─── Socket.io ───────────────────────────────────────────────────────────────
