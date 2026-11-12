@@ -26,7 +26,7 @@ npm run dev:server    # backend with nodemon on :3011
 npm run dev:client    # frontend with Vite on :3010
 ```
 
-In dev, Vite's built-in proxy (configured in `vite.config.ts`) forwards `/verify`, `/auth`, and `/socket.io` (including WebSocket) to `http://localhost:3011`. Copy `client/.env.example` to `client/.env` (default values work for dev).
+In dev, Vite's built-in proxy (configured in `vite.config.ts`) forwards `/verify`, `/rooms`, `/auth`, and `/socket.io` (including WebSocket) to `http://localhost:3011`.
 
 ## Production (Docker)
 
@@ -36,7 +36,7 @@ docker compose logs -f                        # follow logs
 docker compose down                           # stop
 ```
 
-`.github/workflows/docker.yml` publishes `ghcr.io/fmeies/music-quiz` (linux/amd64; `latest`, `sha-*`, semver on `v*` tags) on pushes to `main`, only after `ci.yml` passes (reused via `workflow_call`). Compose is pull-only (no `build:`), so a failed pull fails loudly instead of triggering a slow local build on the server. The image is built for the base path `/music-quiz/` (the `vite.config.ts` default).
+`.github/workflows/docker.yml` publishes `ghcr.io/fmeies/music-quiz` (linux/amd64; `latest`, `sha-*`, semver on `v*` tags) on pushes to `main`, only after `ci.yml` passes (reused via `workflow_call`). Compose is pull-only (no `build:`), so a failed pull fails loudly instead of triggering a slow local build on the server.
 
 ## Environment
 
@@ -48,16 +48,11 @@ docker compose down                           # stop
 | `SPOTIFY_CLIENT_SECRET` | Spotify app client secret |
 | `REDIRECT_URI` | OAuth callback (must be HTTPS in prod) |
 | `PORT` | Server port (default 3011) |
-| `APP_URL` | Full app URL used for Socket.io CORS (e.g. `https://your-domain.com`) |
 | `APP_CODE` | Access gate code — validated client-side (CodeGate) **and** server-side (Socket.io middleware) |
 | `PLAYLIST_N_NAME` | Display name for preset playlist N (e.g. `PLAYLIST_1_NAME`) |
 | `PLAYLIST_N_URL` | Spotify URL for preset playlist N (e.g. `PLAYLIST_1_URL`). **Must be a playlist the connecting host owns or collaborates on** — see the playlist-loading gotcha below. |
 
-**`client/.env`** — copy from `client/.env.example`. Used at build time by Vite:
-
-| Variable | Description |
-|---|---|
-| `VITE_BASE_PATH` | URL path prefix the app is served under (default `/music-quiz/`) |
+The server loads `server/.env` via Node's built-in `--env-file-if-exists` (no `dotenv`); in Docker, Compose's `env_file` provides the variables. The client needs no configuration.
 
 ## Game Flow
 
@@ -134,7 +129,7 @@ npm run format:check  # Prettier (check only, used in CI)
 
 - **Spotify Premium required** for Web Playback SDK (full track playback)
 - **HTTPS required** in production (Spotify SDK constraint)
-- `VITE_BASE_PATH` in `client/.env` controls the asset base path; `import.meta.env.BASE_URL` is `/music-quiz/` in prod and `/` in dev. The value is baked in at build time — a rebuild is required to change it. **Changing `VITE_BASE_PATH` requires updating the reverse-proxy config in lockstep** (the `ProxyPass /music-quiz/` rule in Apache, or equivalent in nginx/Caddy). The server itself is base-path agnostic: the proxy strips the prefix.
+- **The app is path-prefix agnostic.** Vite builds with `base: './'` and the client uses relative URLs (`fetch('verify')`, Socket.io path derived from `window.location`), so the reverse proxy alone decides the prefix (`/music-quiz/` in prod) and strips it before forwarding. Keep all client URLs relative — an absolute `/…` URL would bypass the prefix. Consequence: the app must be opened with a trailing slash (`/music-quiz/`).
 - `APP_CODE` is enforced both in the browser (CodeGate component) and on the server (Socket.io `io.use()` middleware). A socket connection without the correct code is rejected before any event handler runs.
 - **Playlist loading requires the host's connected Spotify (user OAuth token).** Spotify's Feb/Mar 2026 API migration removed `GET /playlists/{id}/tracks` (now 403) in favour of `GET /playlists/{id}/items`, which only returns contents to a user token and **only for playlists that user owns or collaborates on**. App-only Client-Credentials tokens get 401, so loading fails until the host clicks "Connect Spotify". Preset playlists (`PLAYLIST_N_URL`) therefore only work if the host owns/collaborates on them — to use a third-party playlist (e.g. an official HITSTER list), duplicate it into the host's own account and point the URL at the copy. See the [Feb 2026 migration guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide).
 - Only the **first** player to challenge is accepted per turn; subsequent challenge attempts in the same turn are silently rejected.

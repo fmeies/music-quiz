@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 
 const isMobile = window.matchMedia('(pointer: coarse)').matches;
-const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
 
 export default function JoinScreen() {
   const { createRoom, joinRoom } = useGame();
@@ -12,7 +11,7 @@ export default function JoinScreen() {
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    fetch(`${BASE}/rooms/single`)
+    fetch('rooms/single')
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();

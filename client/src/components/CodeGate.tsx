@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 
-const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
-
 interface Props {
   onVerified: (code: string) => void;
 }
@@ -16,9 +14,7 @@ export default function CodeGate({ onVerified }: Props) {
     setLoading(true);
     setError(false);
     try {
-      const res = await fetch(
-        `${BASE}/verify?code=${encodeURIComponent(code)}`
-      );
+      const res = await fetch(`verify?code=${encodeURIComponent(code)}`);
       const { ok } = (await res.json()) as { ok: boolean };
       if (ok) {
         onVerified(code);

@@ -9,9 +9,6 @@ import {
 import { io, Socket } from 'socket.io-client';
 import type { GameState } from '../types';
 
-const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
-const lsKey = (k: string) => `${import.meta.env.BASE_URL}${k}`;
-
 export const STORAGE_KEYS = { CODE: 'mqCode', SESSION: 'mqSession' } as const;
 
 export interface GameSocketState {
@@ -40,9 +37,10 @@ export function useGameSocket(): GameSocketState {
   const [spotifyToken, setSpotifyToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const code = localStorage.getItem(lsKey(STORAGE_KEYS.CODE)) || '';
+    const code = localStorage.getItem(STORAGE_KEYS.CODE) || '';
     const socket = io(window.location.origin, {
-      path: `${BASE}/socket.io`,
+      // Resolved against the page URL, so it follows whatever path prefix the app is served under
+      path: new URL('socket.io', window.location.href).pathname,
       auth: { code },
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
@@ -52,7 +50,7 @@ export function useGameSocket(): GameSocketState {
     socket.on('connect', () => {
       setConnected(true);
       const session = JSON.parse(
-        localStorage.getItem(lsKey(STORAGE_KEYS.SESSION)) || 'null'
+        localStorage.getItem(STORAGE_KEYS.SESSION) || 'null'
       ) as { roomId: string; playerId: string } | null;
       if (!session) return;
       socket.emit(
@@ -64,7 +62,7 @@ export function useGameSocket(): GameSocketState {
             setPlayerId(session.playerId);
             setRoomId(session.roomId);
           } else {
-            localStorage.removeItem(lsKey(STORAGE_KEYS.SESSION));
+            localStorage.removeItem(STORAGE_KEYS.SESSION);
             playerIdRef.current = null;
             setPlayerId(null);
             setRoomId(null);
