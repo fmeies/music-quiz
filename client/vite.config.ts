@@ -3,7 +3,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: process.env.VITE_BASE_PATH || '/music-quiz/',
+  // Relative asset URLs: one build works under any path prefix the reverse proxy chooses
+  base: './',
   server: {
     port: 3010,
     proxy: {

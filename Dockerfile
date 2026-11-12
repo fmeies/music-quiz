@@ -5,8 +5,6 @@ WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
 COPY client/ ./
-# Baked in at build time; empty falls back to the vite.config.ts default (/music-quiz/)
-ARG VITE_BASE_PATH
 RUN npm run build
 
 FROM node:24-alpine AS server-build

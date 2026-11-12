@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import * as crypto from 'crypto';
 import express from 'express';
 import { log } from './log';
@@ -30,7 +29,6 @@ const REQUIRED_ENV = [
   'SPOTIFY_CLIENT_SECRET',
   'REDIRECT_URI',
   'APP_CODE',
-  'APP_URL',
 ];
 if (require.main === module) {
   const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
@@ -44,9 +42,9 @@ if (require.main === module) {
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: process.env.APP_URL || '*', methods: ['GET', 'POST'] },
-});
+// No CORS config: the client is served from the same origin, so browsers get no
+// Access-Control-Allow-Origin header for other origins. APP_CODE still gates every connection.
+const io = new Server(server);
 
 app.use(express.json());
 

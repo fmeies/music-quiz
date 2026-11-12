@@ -44,6 +44,8 @@ describe('CodeGate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(onVerified).toHaveBeenCalledWith('secret'));
+    // Relative, so the request stays under the path prefix the app is served from
+    expect(globalThis.fetch).toHaveBeenCalledWith('verify?code=secret');
   });
 
   it('shows an error when server returns ok:false', async () => {

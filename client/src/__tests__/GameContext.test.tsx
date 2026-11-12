@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
+import { io } from 'socket.io-client';
 import { GameProvider, useGame } from '../context/GameContext';
+import { STORAGE_KEYS } from '../hooks/useGameSocket';
 import type { GameState } from '../types';
 
 // ─── Mock socket.io-client ────────────────────────────────────────────────────
@@ -117,6 +119,19 @@ describe('GameContext — connection', () => {
     });
     expect(screen.getByTestId('connected').textContent).toBe('false');
   });
+
+  it('derives the Socket.io path from the path prefix the page is served under', () => {
+    window.history.pushState({}, '', '/some-prefix/');
+    try {
+      renderWithProvider();
+      expect(io).toHaveBeenCalledWith(
+        window.location.origin,
+        expect.objectContaining({ path: '/some-prefix/socket.io' })
+      );
+    } finally {
+      window.history.pushState({}, '', '/');
+    }
+  });
 });
 
 // ── Game state ────────────────────────────────────────────────────────────────
@@ -218,7 +233,7 @@ describe('GameContext — createRoom', () => {
       fireEvent.click(screen.getByTestId('create-room-btn'));
     });
     const session = JSON.parse(
-      localStorage.getItem(`${import.meta.env.BASE_URL}mqSession`) ?? 'null'
+      localStorage.getItem(STORAGE_KEYS.SESSION) ?? 'null'
     );
     expect(session).toEqual({ roomId: 'ABCDE', playerId: 'p1' });
   });
@@ -297,7 +312,7 @@ describe('GameContext — joinRoom', () => {
 describe('GameContext — reconnection', () => {
   it('emits reconnectPlayer when session exists in localStorage', () => {
     localStorage.setItem(
-      `${import.meta.env.BASE_URL}mqSession`,
+      STORAGE_KEYS.SESSION,
       JSON.stringify({ roomId: 'ABCDE', playerId: 'p1' })
     );
     mockSocket.emit.mockImplementation(
@@ -318,7 +333,7 @@ describe('GameContext — reconnection', () => {
 
   it('restores playerId and roomId on successful reconnection', () => {
     localStorage.setItem(
-      `${import.meta.env.BASE_URL}mqSession`,
+      STORAGE_KEYS.SESSION,
       JSON.stringify({ roomId: 'ABCDE', playerId: 'p1' })
     );
     mockSocket.emit.mockImplementation(
@@ -336,7 +351,7 @@ describe('GameContext — reconnection', () => {
 
   it('clears session and resets state on reconnection failure', () => {
     localStorage.setItem(
-      `${import.meta.env.BASE_URL}mqSession`,
+      STORAGE_KEYS.SESSION,
       JSON.stringify({ roomId: 'ABCDE', playerId: 'p1' })
     );
     mockSocket.emit.mockImplementation(
@@ -349,9 +364,7 @@ describe('GameContext — reconnection', () => {
     act(() => {
       socketHandlers['connect']?.();
     });
-    expect(
-      localStorage.getItem(`${import.meta.env.BASE_URL}mqSession`)
-    ).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEYS.SESSION)).toBeNull();
     expect(screen.getByTestId('playerId').textContent).toBe('');
     expect(screen.getByTestId('roomId').textContent).toBe('');
   });

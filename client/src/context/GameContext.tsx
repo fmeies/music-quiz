@@ -4,9 +4,6 @@ import { useGameSocket, STORAGE_KEYS } from '../hooks/useGameSocket';
 
 const GameContext = createContext<GameContextValue | null>(null);
 
-const BASE = import.meta.env.DEV ? '' : import.meta.env.BASE_URL.slice(0, -1);
-const lsKey = (k: string) => `${import.meta.env.BASE_URL}${k}`;
-
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const {
     socketRef,
@@ -35,7 +32,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setPlayerId(res.playerId);
           setRoomId(res.roomId);
           localStorage.setItem(
-            lsKey(STORAGE_KEYS.SESSION),
+            STORAGE_KEYS.SESSION,
             JSON.stringify({ roomId: res.roomId, playerId: res.playerId })
           );
           resolve(res);
@@ -54,7 +51,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           setPlayerId(res.playerId);
           setRoomId(res.roomId);
           localStorage.setItem(
-            lsKey(STORAGE_KEYS.SESSION),
+            STORAGE_KEYS.SESSION,
             JSON.stringify({ roomId: res.roomId, playerId: res.playerId })
           );
           resolve(res);
@@ -67,7 +64,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setConnectingSpotify(true);
     try {
       const win = window.open('', '_blank', 'width=500,height=700');
-      const res = await fetch(`${BASE}/auth/spotify/url?roomId=${roomId}`);
+      const res = await fetch(`auth/spotify/url?roomId=${roomId}`);
       const { url } = (await res.json()) as { url: string };
       win!.location.href = url;
     } finally {

@@ -5,6 +5,7 @@ import JoinScreen from './components/JoinScreen';
 import Lobby from './components/Lobby';
 import GameScreen from './components/GameScreen';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { STORAGE_KEYS } from './hooks/useGameSocket';
 import './App.css';
 
 function AppInner() {
@@ -32,19 +33,16 @@ function AppInner() {
   );
 }
 
-const lsKey = (k: string) => `${import.meta.env.BASE_URL}${k}`;
-
 export default function App() {
-  const [verified, setVerified] = useState(() => {
-    localStorage.removeItem('mqVerified'); // migrate away from old flag-only storage
-    return !!localStorage.getItem(lsKey('mqCode'));
-  });
+  const [verified, setVerified] = useState(
+    () => !!localStorage.getItem(STORAGE_KEYS.CODE)
+  );
 
   if (!verified)
     return (
       <CodeGate
         onVerified={(code) => {
-          localStorage.setItem(lsKey('mqCode'), code);
+          localStorage.setItem(STORAGE_KEYS.CODE, code);
           setVerified(true);
         }}
       />

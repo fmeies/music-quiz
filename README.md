@@ -32,7 +32,6 @@ A browser-based multiplayer music quiz inspired by the Hitster board game. Playe
 
 ```bash
 cp server/.env.example server/.env
-cp client/.env.example client/.env
 ```
 
 Edit `server/.env`:
@@ -40,7 +39,6 @@ Edit `server/.env`:
 ```
 SPOTIFY_CLIENT_ID=your_client_id
 SPOTIFY_CLIENT_SECRET=your_client_secret
-APP_URL=https://your-domain.com
 REDIRECT_URI=https://your-domain.com/music-quiz/auth/spotify/callback
 PORT=3011
 APP_CODE=your_secret_access_code
@@ -49,9 +47,8 @@ PLAYLIST_1_NAME=My Playlist
 PLAYLIST_1_URL=https://open.spotify.com/playlist/xxx
 ```
 
-The published image is built for the URL path `/music-quiz/`. To serve it under a different path, build the image yourself: `docker build --build-arg VITE_BASE_PATH=/other-path/ -t ghcr.io/fmeies/music-quiz:latest .`, then `docker compose up -d --pull never`.
+The app uses relative URLs, so the same image works under any path prefix: the reverse-proxy rule alone decides where it lives. To move it, change the `ProxyPass` path below and the `REDIRECT_URI` (here and in the Spotify dashboard).
 
-> **Note:** If you change `VITE_BASE_PATH`, update the reverse-proxy rule to match (the `ProxyPass /music-quiz/` lines in the Apache example below).
 
 ### 3. Deploy
 
